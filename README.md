@@ -120,6 +120,12 @@ emits by default.
 - No de-duplication across query shapes - a parameterised query and its literal
   variant are two separate samples.
 
+## Architecture
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the component breakdown,
+data flow through the interception pipeline, design rationale and known
+limitations.
+
 ## Building and testing
 
 ```bash
