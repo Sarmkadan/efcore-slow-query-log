@@ -54,7 +54,6 @@ warn: EfCore.SlowQueryLog.Interception.SlowQueryInterceptor[0]
       WHERE [o].[Status] = @p0 ORDER BY [o].[CreatedAt]
       Index suggestions:
         CREATE INDEX IX_Orders_Status_CustomerId_CreatedAt ON Orders (Status, CustomerId, CreatedAt);
-        CREATE INDEX IX_Customers_Id ON Customers (Id);
 ```
 
 ### Getting the ranking programmatically
@@ -101,7 +100,8 @@ The analyzer does **not** build a real SQL parse tree. It scans the statement
 with a handful of regexes:
 
 - columns compared in a `WHERE` predicate -> candidate filter index
-- columns used in a `JOIN ... ON` -> candidate join-key index
+- columns used in a `JOIN ... ON` -> candidate join-key index (left side of
+  the comparison only)
 - columns in `ORDER BY` -> candidate sort index
 
 Columns for the same table are grouped into a single composite suggestion.

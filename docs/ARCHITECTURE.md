@@ -64,8 +64,10 @@ stopwatch and adds no overhead to the pre-execution path.
   dependencies, and honest about its output ("hint, not guarantee"). It is
   conservative: an unresolvable table alias drops the column instead of
   guessing. Trade-off: it misses subqueries, functions over columns, quoted
-  identifiers other than `[...]`, and it treats both sides of a join
-  equality as index candidates.
+  identifiers other than `[...]`, and it only captures the *left* side of a
+  comparison (the predicate regex requires a trailing operator), so in
+  `ON [o].[CustomerId] = [c].[Id]` only `Orders.CustomerId` becomes a
+  candidate, not `Customers.Id`.
 - **Parameter values off by default.** `IncludeParameterValues = false`
   prevents accidental PII/secret leakage into logs; the sample stores a
   pre-formatted string rather than the live `DbParameterCollection`.
