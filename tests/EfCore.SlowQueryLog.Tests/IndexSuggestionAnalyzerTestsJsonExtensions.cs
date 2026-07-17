@@ -13,9 +13,9 @@ public static class IndexSuggestionAnalyzerTestsJsonExtensions
     /// <summary>
     /// Serializes an <see cref="IndexSuggestionAnalyzerTests"/> instance to a JSON string.
     /// </summary>
-    /// <param name="value">The analyzer tests instance to serialize.</param>
+    /// <param name="value">The test class instance to serialize.</param>
     /// <param name="indented">Whether to format the JSON with indentation for readability.</param>
-    /// <returns>A JSON string representation of the analyzer tests.</returns>
+    /// <returns>A JSON string representation of the test class.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static string ToJson(this IndexSuggestionAnalyzerTests value, bool indented = false)
     {
@@ -32,27 +32,25 @@ public static class IndexSuggestionAnalyzerTestsJsonExtensions
     /// Deserializes a JSON string to an <see cref="IndexSuggestionAnalyzerTests"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize.</param>
-    /// <returns>The deserialized analyzer tests instance, or <see langword="null"/> if the JSON is empty.</returns>
+    /// <returns>The deserialized test class instance, or <see langword="null"/> if the JSON is empty.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is <see langword="null"/>.</exception>
     /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
     public static IndexSuggestionAnalyzerTests? FromJson(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
 
-        if (string.IsNullOrWhiteSpace(json))
-        {
-            return null;
-        }
-
-        return JsonSerializer.Deserialize<IndexSuggestionAnalyzerTests>(json, _jsonOptions);
+        return string.IsNullOrWhiteSpace(json)
+            ? null
+            : JsonSerializer.Deserialize<IndexSuggestionAnalyzerTests>(json, _jsonOptions);
     }
 
     /// <summary>
     /// Attempts to deserialize a JSON string to an <see cref="IndexSuggestionAnalyzerTests"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize.</param>
-    /// <param name="value">Receives the deserialized analyzer tests instance if successful.</param>
+    /// <param name="value">Receives the deserialized test class instance if successful.</param>
     /// <returns><see langword="true"/> if deserialization succeeds; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentException">Thrown when <paramref name="json"/> is <see langword="null"/> or empty.</exception>
     public static bool TryFromJson(string json, out IndexSuggestionAnalyzerTests? value)
     {
         ArgumentException.ThrowIfNullOrEmpty(json);
