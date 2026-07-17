@@ -33,10 +33,7 @@ public static class SlowQueryInterceptorValidation
     /// </summary>
     /// <param name="value">The interceptor to check.</param>
     /// <returns><see langword="true"/> if the interceptor is valid; otherwise, <see langword="false"/>.</returns>
-    public static bool IsValid(this SlowQueryInterceptor? value)
-    {
-        return value?.Validate().Count == 0;
-    }
+    public static bool IsValid(this SlowQueryInterceptor? value) => value?.Validate().Count == 0;
 
     /// <summary>
     /// Ensures that the specified <see cref="SlowQueryInterceptor"/> instance is valid.
@@ -54,7 +51,6 @@ public static class SlowQueryInterceptorValidation
             return;
         }
 
-        throw new ArgumentException(
-            $"SlowQueryInterceptor is not valid. Problems: {string.Join(" ", problems)}");
+        throw new ArgumentException($"SlowQueryInterceptor is not valid. Problems: {string.Join(" ", problems)}");
     }
 }
