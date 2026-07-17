@@ -1,3 +1,5 @@
+# EfCore.SlowQueryLog
+
 // # EfCore.SlowQueryLog
 //
 // A small EF Core command interceptor that catches queries running longer than a
@@ -259,6 +261,46 @@
 // interceptor.Clear();
 // ```
 //
+// ## SlowQueryInterceptorTestsExtensions
+//
+// The `SlowQueryInterceptorTestsExtensions` class offers a collection of helper
+// extension methods that make writing unit tests for `SlowQueryInterceptor` easier.
+// It includes methods for creating test commands, configuring interceptors with
+// common test settings, capturing a query, and retrieving captured samples and
+// counts.
+//
+// ### Usage Example
+//
+// ```csharp
+// using EfCore.SlowQueryLog.Interception;
+// using EfCore.SlowQueryLog.Tests;
+// using Microsoft.Data.Sqlite;
+//
+// // Create a test interceptor with a 200 ms threshold
+// var interceptor = TimeSpan.FromMilliseconds(200).CreateTestInterceptor(
+//     includeParameters: true,
+//     suggestIndexes: false);
+//
+// // Capture a slow query using the test helper
+// var sample = interceptor.CaptureSlowQuery(
+//     \"SELECT * FROM Orders WHERE Id = @p0\",
+//     TimeSpan.FromMilliseconds(850),
+//     (\"@p0\", 42));
+//
+// // Inspect the captured sample (if any)
+// if (sample != null)
+// {
+//     Console.WriteLine($\"Captured duration: {sample.Duration.TotalMilliseconds} ms\");
+//     Console.WriteLine($\"SQL: {sample.Sql}\");
+// }
+//
+// // Retrieve all captured samples and the total count
+// var allSamples = interceptor.GetCapturedSamples();
+// var count = interceptor.GetSlowQueryCount();
+//
+// Console.WriteLine($\"Total captured slow queries: {count}\");
+// ```
+//
 // ## SlowQueryLogOptionsExtensions
 //
 // The `SlowQueryLogOptionsExtensions` class provides a fluent interface for configuring `SlowQueryLogOptions` with method chaining. It includes extension methods for setting thresholds, log levels, parameter inclusion, index suggestions, ranking capacity, and callbacks, as well as factory methods for creating pre-configured options instances for different environments.
@@ -316,28 +358,28 @@
 // });
 //
 // // Capture a fast query (should return null)
-// var fastCommand = new SqliteCommand { CommandText = "SELECT 1" };
+// var fastCommand = new SqliteCommand { CommandText = \"SELECT 1\" };
 // var fastSample = interceptor.Capture(fastCommand, TimeSpan.FromMilliseconds(10));
 // Console.WriteLine(fastSample); // null
 //
 // // Capture a slow query (should return a SlowQuerySample)
-// var slowCommand = new SqliteCommand { CommandText = "SELECT * FROM Orders WHERE Status = @p0" };
-// slowCommand.Parameters.AddWithValue("@p0", "active");
+// var slowCommand = new SqliteCommand { CommandText = \"SELECT * FROM Orders WHERE Status = @p0\" };
+// slowCommand.Parameters.AddWithValue(\"@p0\", \"active\");
 // var slowSample = interceptor.Capture(slowCommand, TimeSpan.FromMilliseconds(850));
 //
 // if (slowSample != null)
 // {
-//     Console.WriteLine($"Captured: {slowSample.Duration.TotalMilliseconds}ms");
-//     Console.WriteLine($"Parameters: {slowSample.Parameters}");
-//     Console.WriteLine($"Suggestions: {slowSample.Suggestions.Count}");
+//     Console.WriteLine($\"Captured: {slowSample.Duration.TotalMilliseconds}ms\");
+//     Console.WriteLine($\"Parameters: {slowSample.Parameters}\");
+//     Console.WriteLine($\"Suggestions: {slowSample.Suggestions.Count}\");
 //     foreach (var suggestion in slowSample.Suggestions)
 //     {
-//         Console.WriteLine($"  {suggestion.Table}: {string.Join(", ", suggestion.Columns)}");
+//         Console.WriteLine($\"  {suggestion.Table}: {string.Join(\", \", suggestion.Columns)}\");
 //     }
 // }
 //
 // // Access the live ranking
-// Console.WriteLine($"Ranking count: {interceptor.Ranking.Count}");
+// Console.WriteLine($\"Ranking count: {interceptor.Ranking.Count}\");
 // ```
 //
 // ## IndexSuggestionAnalyzerTests
@@ -354,12 +396,12 @@
 // var analyzer = new IndexSuggestionAnalyzer();
 //
 // // Test a simple WHERE clause
-// var sql = "SELECT [c].[Id], [c].[Email] FROM [Customers] AS [c] WHERE [c].[Email] = @p0";
+// var sql = \"SELECT [c].[Id], [c].[Email] FROM [Customers] AS [c] WHERE [c].[Email] = @p0\";
 // var suggestions = analyzer.Analyze(sql);
 //
 // Assert.Single(suggestions);
-// Assert.Equal("Customers", suggestions[0].Table);
-// Assert.Contains("Email", suggestions[0].Columns);
+// Assert.Equal(\"Customers\", suggestions[0].Table);
+// Assert.Contains(\"Email\", suggestions[0].Columns);
 //
 // // Test a query with JOIN and ORDER BY
 // var complexSql = @\"SELECT [o].[Id] FROM [Orders] AS [o]
