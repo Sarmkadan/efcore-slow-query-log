@@ -94,10 +94,17 @@ public static class SlowQueryInterceptorExtensions
     /// <exception cref="ArgumentNullException">
     /// Thrown if <paramref name="interceptor"/> or <paramref name="command"/> is null.
     /// </exception>
+    /// <exception cref="ArgumentOutOfRangeException">
+    /// Thrown if <paramref name="duration"/> is negative.
+    /// </exception>
     public static SlowQuerySample? Capture(this SlowQueryInterceptor interceptor, DbCommand command, TimeSpan duration)
     {
         ArgumentNullException.ThrowIfNull(interceptor);
         ArgumentNullException.ThrowIfNull(command);
+        if (duration < TimeSpan.Zero)
+        {
+            throw new ArgumentOutOfRangeException(nameof(duration), "Duration cannot be negative.");
+        }
         return interceptor.Capture(command, duration);
     }
 
