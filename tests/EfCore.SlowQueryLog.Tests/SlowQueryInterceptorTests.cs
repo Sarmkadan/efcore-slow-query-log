@@ -4,10 +4,17 @@ using EfCore.SlowQueryLog.Options;
 using Microsoft.Data.Sqlite;
 using Xunit;
 
-namespace EfCore.SlowQueryLog.Tests;
-
+/// <summary>
+/// Tests for the SlowQueryInterceptor class.
+/// </summary>
 public class SlowQueryInterceptorTests
 {
+    /// <summary>
+    /// Creates a new SqliteCommand with the given SQL and parameters.
+    /// </summary>
+    /// <param name="sql">The SQL to execute.</param>
+    /// <param name="ps">The parameters to add to the command.</param>
+    /// <returns>A new SqliteCommand instance.</returns>
     private static SqliteCommand Command(string sql, params (string name, object value)[] ps)
     {
         var cmd = new SqliteCommand { CommandText = sql };
@@ -16,6 +23,9 @@ public class SlowQueryInterceptorTests
         return cmd;
     }
 
+    /// <summary>
+    /// Verifies that a fast query is ignored by the SlowQueryInterceptor.
+    /// </summary>
     [Fact]
     public void Fast_query_is_ignored()
     {
@@ -30,6 +40,9 @@ public class SlowQueryInterceptorTests
         Assert.Equal(0, interceptor.Ranking.Count);
     }
 
+    /// <summary>
+    /// Verifies that a slow query is captured and ranked by the SlowQueryInterceptor.
+    /// </summary>
     [Fact]
     public void Slow_query_is_captured_and_ranked()
     {
@@ -46,6 +59,9 @@ public class SlowQueryInterceptorTests
         Assert.Contains(sample!.Suggestions, s => s.Table == "Orders" && s.Columns.Contains("Status"));
     }
 
+    /// <summary>
+    /// Verifies that parameters are captured only when IncludeParameterValues is enabled.
+    /// </summary>
     [Fact]
     public void Parameters_captured_only_when_enabled()
     {
@@ -67,6 +83,9 @@ public class SlowQueryInterceptorTests
         Assert.Null(sample2!.Parameters);
     }
 
+    /// <summary>
+    /// Verifies that the OnSlowQuery callback is invoked by the SlowQueryInterceptor.
+    /// </summary>
     [Fact]
     public void OnSlowQuery_callback_is_invoked()
     {
@@ -82,6 +101,9 @@ public class SlowQueryInterceptorTests
         Assert.NotNull(seen);
     }
 
+    /// <summary>
+    /// Verifies that suggestions are disabled when SuggestIndexes is set to false.
+    /// </summary>
     [Fact]
     public void Suggestions_disabled_produces_none()
     {
@@ -97,6 +119,9 @@ public class SlowQueryInterceptorTests
         Assert.Empty(sample!.Suggestions);
     }
 
+    /// <summary>
+    /// Verifies that an invalid threshold throws an ArgumentOutOfRangeException.
+    /// </summary>
     [Fact]
     public void Invalid_threshold_throws()
     {
