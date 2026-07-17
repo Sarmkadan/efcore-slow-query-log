@@ -9,8 +9,10 @@ namespace EfCore.SlowQueryLog.Analysis;
 /// </summary>
 public sealed partial class IndexSuggestionAnalyzer
 {
-    // matches an identifier optionally qualified with an alias/table: [t].[Col] or t.Col or Col
-    private const string Ident = @"(?:\[?(?<tbl>\w+)\]?\.)?\[?(?<col>\w+)\]?";
+    // matches an identifier optionally qualified with an alias/table: [t].[Col] or t.Col or Col.
+    // The lookbehind rejects parameter markers (@p0, :p0, $1) and the leading [A-Za-z_]
+    // rejects bare numeric literals (WHERE 1 = 1, ORDER BY 1).
+    private const string Ident = @"(?<![@:$\w])(?:\[?(?<tbl>[A-Za-z_]\w*)\]?\.)?\[?(?<col>[A-Za-z_]\w*)\]?";
 
     [GeneratedRegex(@"\bWHERE\b(?<body>.*?)(?:\bGROUP\s+BY\b|\bORDER\s+BY\b|\bHAVING\b|$)",
         RegexOptions.IgnoreCase | RegexOptions.Singleline)]
@@ -24,7 +26,7 @@ public sealed partial class IndexSuggestionAnalyzer
         RegexOptions.IgnoreCase | RegexOptions.Singleline)]
     private static partial Regex OrderByClause();
 
-    [GeneratedRegex(@"(?:\[?(?<tbl>\w+)\]?\.)?\[?(?<col>\w+)\]?\s*(?:=|>|<|>=|<=|<>|\bLIKE\b|\bIN\b|\bIS\b)",
+    [GeneratedRegex(@"(?<![@:$\w])(?:\[?(?<tbl>[A-Za-z_]\w*)\]?\.)?\[?(?<col>[A-Za-z_]\w*)\]?\s*(?:=|>|<|>=|<=|<>|\bLIKE\b|\bIN\b|\bIS\b)",
         RegexOptions.IgnoreCase)]
     private static partial Regex Predicate();
 

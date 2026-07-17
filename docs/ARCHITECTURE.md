@@ -67,7 +67,9 @@ stopwatch and adds no overhead to the pre-execution path.
   identifiers other than `[...]`, and it only captures the *left* side of a
   comparison (the predicate regex requires a trailing operator), so in
   `ON [o].[CustomerId] = [c].[Id]` only `Orders.CustomerId` becomes a
-  candidate, not `Customers.Id`.
+  candidate, not `Customers.Id`. Parameter markers (`@p0`, `:p0`, `$1`) and
+  bare numeric literals (`WHERE 1 = 1`, `ORDER BY 1`) are explicitly rejected
+  so they cannot surface as phantom columns.
 - **Parameter values off by default.** `IncludeParameterValues = false`
   prevents accidental PII/secret leakage into logs; the sample stores a
   pre-formatted string rather than the live `DbParameterCollection`.
