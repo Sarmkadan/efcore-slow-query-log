@@ -5,7 +5,7 @@ using Microsoft.Extensions.Logging;
 namespace EfCore.SlowQueryLog.Options;
 
 /// <summary>
-/// Validation helpers for <see cref="SlowQueryLogOptions"/> instances.
+/// Provides validation methods for <see cref="SlowQueryLogOptions"/> instances.
 /// </summary>
 public static class SlowQueryLogOptionsValidation
 {
@@ -14,7 +14,7 @@ public static class SlowQueryLogOptionsValidation
     /// </summary>
     /// <param name="value">The options to validate.</param>
     /// <returns>An empty list if the options are valid; otherwise, a list of error messages.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static IReadOnlyList<string> Validate(this SlowQueryLogOptions value)
     {
         ArgumentNullException.ThrowIfNull(value);
@@ -38,19 +38,20 @@ public static class SlowQueryLogOptionsValidation
     /// Determines whether the specified options instance is valid.
     /// </summary>
     /// <param name="value">The options to check.</param>
-    /// <returns>True if the options are valid; otherwise, false.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+    /// <returns><see langword="true"/> if the options are valid; otherwise, <see langword="false"/>.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     public static bool IsValid(this SlowQueryLogOptions value)
     {
-        ArgumentNullException.ThrowIfNull(value);
-        return value.Threshold > TimeSpan.Zero && value.RankingCapacity > 0;
+        return value is not null
+            && value.Threshold > TimeSpan.Zero
+            && value.RankingCapacity > 0;
     }
 
     /// <summary>
     /// Validates the specified options instance and throws an <see cref="ArgumentException"/> if it is invalid.
     /// </summary>
     /// <param name="value">The options to validate.</param>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">Thrown when the options are invalid, containing a list of problems.</exception>
     public static void EnsureValid(this SlowQueryLogOptions value)
     {
@@ -71,7 +72,8 @@ public static class SlowQueryLogOptionsValidation
         if (errors.Count > 0)
         {
             throw new ArgumentException(
-                $"The {nameof(SlowQueryLogOptions)} instance is invalid. Problems:\n{string.Join(Environment.NewLine, errors)}");
+                $"The {nameof(SlowQueryLogOptions)} instance is invalid. Problems:\n{string.Join(Environment.NewLine, errors)}",
+                nameof(value));
         }
     }
 }
