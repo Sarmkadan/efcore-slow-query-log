@@ -94,6 +94,41 @@ o.OnSlowQuery = sample =>
 | `RankingCapacity` | `25` | How many slowest queries to keep in memory. |
 | `OnSlowQuery` | `null` | Callback invoked for every slow query. |
 
+## SlowQuerySample
+
+`SlowQuerySample` represents a captured slow query together with its execution
+metadata and any index suggestions that were generated. It is a simple immutable
+record that can be instantiated directly with object‑initializer syntax.
+
+```csharp
+using EfCore.SlowQueryLog;
+
+var sample = new SlowQuerySample
+{
+    Sql = "SELECT * FROM Orders WHERE Id = @p0",
+    Duration = TimeSpan.FromMilliseconds(850),
+    CapturedAt = DateTimeOffset.UtcNow,
+    Parameters = "@p0 = 42",
+    Suggestions = new[]
+    {
+        new IndexSuggestion(
+            Table: "Orders",
+            Columns: new[] { "Id" },
+            Reason: "filter column")
+    }
+};
+
+Console.WriteLine($"Slow query ({sample.Duration.TotalMilliseconds:F0} ms): {sample.Sql}");
+foreach (var suggestion in sample.Suggestions)
+{
+    Console.WriteLine(suggestion.ToSqlHint());
+}
+```
+
+The example shows how to create a `SlowQuerySample`, optionally include the
+parameter list, and iterate over any `IndexSuggestion`s to obtain the SQL hint
+that can be logged or displayed.
+
 ## How the index heuristic works
 
 The analyzer does **not** build a real SQL parse tree. It scans the statement
