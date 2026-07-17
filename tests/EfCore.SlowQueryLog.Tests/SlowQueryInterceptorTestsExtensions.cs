@@ -15,6 +15,7 @@ public static class SlowQueryInterceptorTestsExtensions
     /// <param name="ps">Named parameters with their values.</param>
     /// <returns>A configured SqliteCommand instance.</returns>
     /// <exception cref="ArgumentNullException">Thrown when sql is null.</exception>
+    /// <exception cref="ArgumentNullException">Thrown when name is null in parameters array.</exception>
     public static SqliteCommand CreateTestCommand(this string sql, params (string name, object value)[] ps)
     {
         ArgumentNullException.ThrowIfNull(sql);
@@ -22,6 +23,7 @@ public static class SlowQueryInterceptorTestsExtensions
         var cmd = new SqliteCommand { CommandText = sql };
         foreach (var (name, value) in ps)
         {
+            ArgumentNullException.ThrowIfNull(name);
             cmd.Parameters.AddWithValue(name, value);
         }
         return cmd;
