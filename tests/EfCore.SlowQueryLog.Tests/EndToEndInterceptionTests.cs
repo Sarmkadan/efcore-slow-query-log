@@ -7,6 +7,10 @@ using Xunit;
 
 namespace EfCore.SlowQueryLog.Tests;
 
+/// <summary>
+/// End-to-end integration tests that verify the SlowQueryInterceptor works correctly
+/// within the Entity Framework Core pipeline.
+/// </summary>
 public class EndToEndInterceptionTests
 {
     private class Blog
@@ -21,6 +25,10 @@ public class EndToEndInterceptionTests
         public DbSet<Blog> Blogs => Set<Blog>();
     }
 
+    /// <summary>
+    /// Verifies that the SlowQueryInterceptor executes within the EF Core pipeline
+    /// and correctly tracks slow queries.
+    /// </summary>
     [Fact]
     public void Interceptor_runs_inside_ef_pipeline()
     {
