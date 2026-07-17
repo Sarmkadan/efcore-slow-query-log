@@ -340,6 +340,59 @@ if (slowSample != null)
 Console.WriteLine($"Ranking count: {interceptor.Ranking.Count}");
 ```
 
+## EndToEndInterceptionTestsExtensions
+
+Extension methods for `EndToEndInterceptionTests` that provide utility functionality for end-to-end testing of EF Core slow query interception scenarios. These methods simplify the creation of test infrastructure, including in-memory database connections, slow query interceptors with configurable thresholds, and utilities for inspecting captured slow queries.
+
+### Usage Examples
+
+```csharp
+using EfCore.SlowQueryLog;
+using EfCore.SlowQueryLog.Interception;
+using EfCore.SlowQueryLog.Tests;
+using Microsoft.Data.Sqlite;
+
+// Create a test instance
+var test = new EndToEndInterceptionTests();
+
+// Create an in-memory SQLite connection for testing
+using var connection = test.CreateInMemoryConnection();
+
+// Create a slow query interceptor with a custom threshold
+var interceptor = test.CreateSlowQueryInterceptor(TimeSpan.FromMilliseconds(300));
+
+// Create a slow query interceptor with the default threshold (1 tick)
+var defaultInterceptor = test.CreateDefaultSlowQueryInterceptor();
+
+// Capture a slow query directly
+var sample = test.CaptureSlowQuery(
+  interceptor,
+  "SELECT * FROM Orders WHERE Status = @p0",
+  TimeSpan.FromMilliseconds(850)
+);
+
+if (sample != null)
+{
+  Console.WriteLine($"Captured: {sample.Duration.TotalMilliseconds}ms");
+  Console.WriteLine(sample.Sql);
+}
+
+// Get all captured slow queries
+var queries = test.GetSlowQuerySamples(interceptor);
+Console.WriteLine($"Total slow queries: {queries.Count}");
+
+// Get the count of slow queries
+int count = test.GetSlowQueryCount(interceptor);
+Console.WriteLine($"Slow query count: {count}");
+
+// Clear all recorded slow queries
+foreach (var q in queries)
+{
+  Console.WriteLine($"{q.Duration.TotalMilliseconds}ms {q.Sql}");
+}
+test.ClearSlowQueries(interceptor);
+```
+
 ## License
 
 MIT
