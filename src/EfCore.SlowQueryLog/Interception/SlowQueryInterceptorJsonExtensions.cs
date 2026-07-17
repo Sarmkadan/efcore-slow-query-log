@@ -13,7 +13,7 @@ public static class SlowQueryInterceptorJsonExtensions
     public static string ToJson(this SlowQueryInterceptor value, bool indented = false)
     {
         ArgumentNullException.ThrowIfNull(value);
-        return JsonSerializer.Serialize(value, _jsonSerializerOptions, indented);
+        return JsonSerializer.Serialize(value, _jsonSerializerOptions);
     }
 
     public static SlowQueryInterceptor? FromJson(string json)
