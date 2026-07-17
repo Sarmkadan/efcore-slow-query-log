@@ -3,10 +3,16 @@ using Xunit;
 
 namespace EfCore.SlowQueryLog.Tests;
 
+/// <summary>
+/// Unit tests for <see cref="IndexSuggestionAnalyzer"/> that verify index suggestion generation from SQL queries.
+/// </summary>
 public class IndexSuggestionAnalyzerTests
 {
     private readonly IndexSuggestionAnalyzer _analyzer = new();
 
+    /// <summary>
+    /// Tests that the analyzer suggests an index for a simple WHERE clause filtering on a single column.
+    /// </summary>
     [Fact]
     public void Suggests_index_for_where_column()
     {
@@ -19,6 +25,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.Contains("Email", s.Columns);
     }
 
+    /// <summary>
+    /// Tests that the analyzer suggests an index covering columns used in WHERE clause, JOIN condition, and ORDER BY clause.
+    /// </summary>
     [Fact]
     public void Suggests_join_and_order_columns()
     {
@@ -35,6 +44,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.Contains("CreatedAt", orders.Columns);
     }
 
+    /// <summary>
+    /// Tests that empty SQL strings and whitespace-only strings return no index suggestions.
+    /// </summary>
     [Fact]
     public void Empty_sql_yields_no_suggestions()
     {
@@ -42,6 +54,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.Empty(_analyzer.Analyze("   "));
     }
 
+    /// <summary>
+    /// Tests that SQL queries without WHERE clause filters return no index suggestions.
+    /// </summary>
     [Fact]
     public void Sql_without_filters_yields_no_suggestions()
     {
@@ -49,6 +64,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.Empty(_analyzer.Analyze(sql));
     }
 
+    /// <summary>
+    /// Tests that parameter markers like @p0 are not incorrectly identified as column names.
+    /// </summary>
     [Fact]
     public void Parameter_markers_are_not_treated_as_columns()
     {
@@ -59,6 +77,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.DoesNotContain(suggestions, s => s.Columns.Contains("p0"));
     }
 
+    /// <summary>
+    /// Tests that numeric literals in SQL queries are not incorrectly treated as column names.
+    /// </summary>
     [Fact]
     public void Numeric_literals_are_not_treated_as_columns()
     {
@@ -68,6 +89,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.Equal(new[] { "Email" }, s.Columns);
     }
 
+    /// <summary>
+    /// Tests that ORDER BY ordinal values (e.g., ORDER BY 1) are not incorrectly treated as column names.
+    /// </summary>
     [Fact]
     public void OrderBy_ordinal_is_not_treated_as_column()
     {
@@ -77,6 +101,9 @@ public class IndexSuggestionAnalyzerTests
         Assert.Equal(new[] { "Email" }, s.Columns);
     }
 
+    /// <summary>
+    /// Tests that <see cref="IndexSuggestion.ToSqlHint()"/> correctly generates a CREATE INDEX SQL statement from an index suggestion.
+    /// </summary>
     [Fact]
     public void ToSqlHint_builds_create_index_statement()
     {
