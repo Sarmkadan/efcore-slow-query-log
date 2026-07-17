@@ -294,6 +294,52 @@ var debugOptions = SlowQueryLogOptionsExtensions.CreateDebug(thresholdMillisecon
 var captureAllOptions = SlowQueryLogOptionsExtensions.CreateCaptureAll(thresholdMilliseconds: 1);
 ```
 
+## SlowQueryInterceptorTests
+
+`SlowQueryInterceptorTests` is a unit test class that verifies the behavior of the `SlowQueryInterceptor` class. It tests various scenarios including fast queries that should be ignored, slow queries that should be captured and ranked, parameter capturing, callback invocation, and configuration options like index suggestions and threshold validation.
+
+The test class demonstrates how to use the interceptor in isolation with synthetic commands and timing, making it useful for understanding the expected behavior of the interceptor without requiring a full database setup.
+
+### Usage Example
+
+```csharp
+using EfCore.SlowQueryLog;
+using EfCore.SlowQueryLog.Interception;
+using Microsoft.Data.Sqlite;
+
+// Create an interceptor with a 500ms threshold
+var interceptor = new SlowQueryInterceptor(new SlowQueryLogOptions
+{
+    Threshold = TimeSpan.FromMilliseconds(500),
+    IncludeParameterValues = true,
+    SuggestIndexes = true
+});
+
+// Capture a fast query (should return null)
+var fastCommand = new SqliteCommand { CommandText = "SELECT 1" };
+var fastSample = interceptor.Capture(fastCommand, TimeSpan.FromMilliseconds(10));
+Console.WriteLine(fastSample); // null
+
+// Capture a slow query (should return a SlowQuerySample)
+var slowCommand = new SqliteCommand { CommandText = "SELECT * FROM Orders WHERE Status = @p0" };
+slowCommand.Parameters.AddWithValue("@p0", "active");
+var slowSample = interceptor.Capture(slowCommand, TimeSpan.FromMilliseconds(850));
+
+if (slowSample != null)
+{
+    Console.WriteLine($"Captured: {slowSample.Duration.TotalMilliseconds}ms");
+    Console.WriteLine($"Parameters: {slowSample.Parameters}");
+    Console.WriteLine($"Suggestions: {slowSample.Suggestions.Count}");
+    foreach (var suggestion in slowSample.Suggestions)
+    {
+        Console.WriteLine($"  {suggestion.Table}: {string.Join(", ", suggestion.Columns)}");
+    }
+}
+
+// Access the live ranking
+Console.WriteLine($"Ranking count: {interceptor.Ranking.Count}");
+```
+
 ## License
 
 MIT
