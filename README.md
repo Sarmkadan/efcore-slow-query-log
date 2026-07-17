@@ -259,6 +259,41 @@ var allSuggestions = interceptor.GetAllIndexSuggestions();
 interceptor.Clear();
 ```
 
+## SlowQueryLogOptionsExtensions
+
+The `SlowQueryLogOptionsExtensions` class provides a fluent interface for configuring `SlowQueryLogOptions` with method chaining. It includes extension methods for setting thresholds, log levels, parameter inclusion, index suggestions, ranking capacity, and callbacks, as well as factory methods for creating pre-configured options instances for different environments.
+
+### Usage Examples
+
+```csharp
+using EfCore.SlowQueryLog;
+using EfCore.SlowQueryLog.Options;
+using Microsoft.Extensions.Logging;
+
+// Fluent configuration with method chaining
+var options = SlowQueryLogOptionsExtensions.CreateDefault()
+    .WithThresholdMilliseconds(300)
+    .WithLogLevel(LogLevel.Warning)
+    .WithParameterValues()
+    .WithIndexSuggestions()
+    .WithRankingCapacity(50)
+    .WithOnSlowQuery(sample => 
+        Console.WriteLine($"Slow query detected: {sample.Duration.TotalMilliseconds:F1}ms"));
+
+// Alternative: using the Configure method for grouped settings
+var productionOptions = SlowQueryLogOptionsExtensions.CreateProduction(thresholdMilliseconds: 500)
+    .Configure(o => 
+    {
+        o.IncludeParameterValues = false; // Keep off in production
+        o.RankingCapacity = 200;
+    });
+
+// Factory methods for common scenarios
+var devOptions = SlowQueryLogOptionsExtensions.CreateDevelopment(thresholdMilliseconds: 200);
+var debugOptions = SlowQueryLogOptionsExtensions.CreateDebug(thresholdMilliseconds: 100);
+var captureAllOptions = SlowQueryLogOptionsExtensions.CreateCaptureAll(thresholdMilliseconds: 1);
+```
+
 ## License
 
 MIT
