@@ -168,6 +168,49 @@ dotnet build
 dotnet test
 ```
 
+## SlowQueryInterceptorExtensions
+
+The `SlowQueryInterceptorExtensions` class provides a set of convenient extension methods for the `SlowQueryInterceptor` that simplify common operations such as clearing captured queries, checking if any queries have been captured, retrieving individual queries by performance characteristics, and accessing aggregated statistics about the captured slow queries.
+
+These extensions make it easy to programmatically inspect the captured slow queries for diagnostic purposes, testing, or integration with monitoring systems.
+
+### Usage Examples
+
+```csharp
+using EfCore.SlowQueryLog.Interception;
+
+// Create and configure the interceptor
+var interceptor = new SlowQueryInterceptor(new SlowQueryLogOptions
+{
+    Threshold = TimeSpan.FromMilliseconds(200),
+});
+
+// Capture some slow queries...
+interceptor.Capture(command1, TimeSpan.FromMilliseconds(850));
+interceptor.Capture(command2, TimeSpan.FromMilliseconds(1200));
+
+// Use extension methods to inspect captured queries
+int queryCount = interceptor.GetQueryCount();
+bool hasQueries = interceptor.HasCapturedQueries();
+
+// Get all captured queries
+var allQueries = interceptor.GetCapturedQueries();
+
+// Get the slowest and fastest queries
+var slowest = interceptor.GetSlowestQuery();
+var fastest = interceptor.GetFastestQuery();
+
+// Get aggregated statistics
+timeSpan totalDuration = interceptor.GetTotalDuration();
+double averageMs = interceptor.GetAverageDurationMs();
+
+// Get all index suggestions across all queries
+var allSuggestions = interceptor.GetAllIndexSuggestions();
+
+// Clear captured queries when needed
+interceptor.Clear();
+```
+
 ## License
 
 MIT
