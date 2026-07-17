@@ -4,8 +4,16 @@ using Xunit;
 
 namespace EfCore.SlowQueryLog.Tests;
 
+/// <summary>
+/// Tests for the SlowQueryRanking class.
+/// </summary>
 public class SlowQueryRankingTests
 {
+    /// <summary>
+    /// Creates a new SlowQuerySample instance with the specified duration.
+    /// </summary>
+    /// <param name="ms">The duration in milliseconds.</param>
+    /// <returns>A new SlowQuerySample instance.</returns>
     private static SlowQuerySample Sample(int ms) => new()
     {
         Sql = $"SELECT {ms}",
@@ -13,6 +21,9 @@ public class SlowQueryRankingTests
         CapturedAt = DateTimeOffset.UtcNow,
     };
 
+    /// <summary>
+    /// Verifies that the SlowQueryRanking orders the samples by duration in descending order.
+    /// </summary>
     [Fact]
     public void Orders_by_duration_descending()
     {
@@ -28,6 +39,9 @@ public class SlowQueryRankingTests
         Assert.Equal(100, snap[2].Duration.TotalMilliseconds);
     }
 
+    /// <summary>
+    /// Verifies that the SlowQueryRanking respects the capacity and keeps the slowest samples.
+    /// </summary>
     [Fact]
     public void Respects_capacity_keeping_slowest()
     {
@@ -43,6 +57,9 @@ public class SlowQueryRankingTests
         Assert.Equal(500, snap[1].Duration.TotalMilliseconds);
     }
 
+    /// <summary>
+    /// Verifies that creating a SlowQueryRanking with a capacity of 0 throws an ArgumentOutOfRangeException.
+    /// </summary>
     [Fact]
     public void Zero_capacity_throws()
     {
