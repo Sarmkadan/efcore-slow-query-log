@@ -42,13 +42,9 @@ public static class SlowQueryLogOptionsJsonExtensions
     public static SlowQueryLogOptions? FromJson(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
-
-        if (string.IsNullOrEmpty(json))
-        {
-            return null;
-        }
-
-        return JsonSerializer.Deserialize<SlowQueryLogOptions>(json, _options);
+        return string.IsNullOrEmpty(json)
+            ? null
+            : JsonSerializer.Deserialize<SlowQueryLogOptions>(json, _options);
     }
 
     /// <summary>
@@ -57,8 +53,11 @@ public static class SlowQueryLogOptionsJsonExtensions
     /// <param name="json">The JSON string to deserialize.</param>
     /// <param name="value">Receives the deserialized instance if successful.</param>
     /// <returns>True if deserialization succeeded; otherwise false.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     public static bool TryFromJson(string json, out SlowQueryLogOptions? value)
     {
+        ArgumentNullException.ThrowIfNull(json);
+
         value = null;
 
         if (string.IsNullOrEmpty(json))
