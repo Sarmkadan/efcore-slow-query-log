@@ -50,6 +50,34 @@ public class IndexSuggestionAnalyzerTests
     }
 
     [Fact]
+    public void Parameter_markers_are_not_treated_as_columns()
+    {
+        var sql = "SELECT * FROM [Customers] WHERE @p0 = [Email]";
+
+        var suggestions = _analyzer.Analyze(sql);
+
+        Assert.DoesNotContain(suggestions, s => s.Columns.Contains("p0"));
+    }
+
+    [Fact]
+    public void Numeric_literals_are_not_treated_as_columns()
+    {
+        var sql = "SELECT * FROM [Customers] WHERE 1 = 1 AND [Email] = @p0";
+
+        var s = Assert.Single(_analyzer.Analyze(sql));
+        Assert.Equal(new[] { "Email" }, s.Columns);
+    }
+
+    [Fact]
+    public void OrderBy_ordinal_is_not_treated_as_column()
+    {
+        var sql = "SELECT * FROM [Customers] WHERE [Email] = @p0 ORDER BY 1";
+
+        var s = Assert.Single(_analyzer.Analyze(sql));
+        Assert.Equal(new[] { "Email" }, s.Columns);
+    }
+
+    [Fact]
     public void ToSqlHint_builds_create_index_statement()
     {
         var suggestion = new IndexSuggestion("Orders", new[] { "CustomerId", "Status" }, "test");
