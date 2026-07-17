@@ -1,13 +1,15 @@
 using System;
 using System.Collections.Generic;
-using System.Globalization;
 
 namespace EfCore.SlowQueryLog.Tests;
 
+/// <summary>
+/// Provides validation methods for <see cref="IndexSuggestionAnalyzerTests"/> instances.
+/// </summary>
 public static class IndexSuggestionAnalyzerTestsValidation
 {
     /// <summary>
-    /// Validates the <see cref="IndexSuggestionAnalyzerTests"/> instance for common problems.
+    /// Validates the <see cref="IndexSuggestionAnalyzerTests"/> instance by invoking all test methods.
     /// </summary>
     /// <param name="value">The test instance to validate.</param>
     /// <returns>A list of human-readable problem descriptions. Empty if valid.</returns>
@@ -18,8 +20,8 @@ public static class IndexSuggestionAnalyzerTestsValidation
 
         var problems = new List<string>();
 
-        // All methods are void parameterless instance methods
-        // We validate that they exist and are callable
+        // Invoke each test method to ensure it executes without throwing
+        // These methods test the IndexSuggestionAnalyzer functionality
         try
         {
             value.Suggests_index_for_where_column();
@@ -75,9 +77,7 @@ public static class IndexSuggestionAnalyzerTestsValidation
     /// <returns>True if valid; otherwise, false.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
     public static bool IsValid(this IndexSuggestionAnalyzerTests value)
-    {
-        return value.Validate().Count == 0;
-    }
+        => value.Validate().Count == 0;
 
     /// <summary>
     /// Ensures that the <see cref="IndexSuggestionAnalyzerTests"/> instance is valid.
