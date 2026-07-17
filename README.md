@@ -83,6 +83,31 @@ o.OnSlowQuery = sample =>
     metrics.Histogram("db.slow_query_ms").Record(sample.Duration.TotalMilliseconds);
 ```
 
+## SlowQueryLogOptions
+
+`SlowQueryLogOptions` configures the behavior of the slow query interceptor. It controls
+which queries are considered slow, how they are logged, whether index suggestions are
+generated, and how many slow queries are kept in memory.
+
+Example usage:
+
+```csharp
+services.AddDbContext<AppDbContext>((sp, options) =>
+{
+    options.UseSqlServer(connectionString);
+    options.UseSlowQueryLog(o =>
+    {
+        o.Threshold = TimeSpan.FromMilliseconds(200);
+        o.LogLevel = LogLevel.Warning;
+        o.IncludeParameterValues = false; // keep off in production
+        o.SuggestIndexes = true;
+        o.RankingCapacity = 25;
+        o.OnSlowQuery = sample => 
+            Console.WriteLine($"Slow query: {sample.Duration.TotalMilliseconds:F0}ms {sample.Sql}");
+    }, sp.GetRequiredService<ILoggerFactory>());
+});
+```
+
 ## Options
 
 | Option | Default | Description |
