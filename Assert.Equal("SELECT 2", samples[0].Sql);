@@ -1,0 +1,8 @@
+
+## Notes
+
+- **Thread safety**: The interceptor’s internal collection is not thread‑safe. Tests that execute queries concurrently should synchronize access or use a fresh interceptor per thread.  
+- **Threshold edge cases**: A threshold of `TimeSpan.Zero` will capture all queries; a negative threshold throws an exception.  
+- **Parameter inclusion**: When `includeParameters` is `false`, the `Parameters` property of `SlowQuerySample` will be empty, which can reduce test noise.  
+- **Callback ordering**: The `onSlowQuery` callback is invoked synchronously during the capture operation; any exceptions thrown by the callback will propagate to the caller.  
+- **Always‑capturing interceptor**: Use `CreateAlwaysCapturingInterceptor` when the test needs to inspect every query, regardless of duration, such as verifying that a particular command was executed.
