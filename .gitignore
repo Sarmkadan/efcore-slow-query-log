@@ -42,3 +42,6 @@ dist/
 ## OS
 .DS_Store
 Thumbs.db
+TestResults/
+BenchmarkDotNet.Artifacts/
+.aider*
