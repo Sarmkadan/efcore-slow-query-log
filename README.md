@@ -340,6 +340,44 @@ if (slowSample != null)
 Console.WriteLine($"Ranking count: {interceptor.Ranking.Count}");
 ```
 
+## IndexSuggestionAnalyzerTests
+
+`IndexSuggestionAnalyzerTests` is a unit test class that verifies the index suggestion generation logic in the `IndexSuggestionAnalyzer` class. It tests how the analyzer extracts index suggestions from SQL queries by examining WHERE clauses, JOIN conditions, and ORDER BY clauses, while correctly ignoring parameter markers, numeric literals, and ordinal values in ORDER BY clauses.
+
+### Usage Example
+
+```csharp
+using EfCore.SlowQueryLog.Analysis;
+using Xunit;
+
+// Create an instance of the analyzer
+var analyzer = new IndexSuggestionAnalyzer();
+
+// Test a simple WHERE clause
+var sql = "SELECT [c].[Id], [c].[Email] FROM [Customers] AS [c] WHERE [c].[Email] = @p0";
+var suggestions = analyzer.Analyze(sql);
+
+Assert.Single(suggestions);
+Assert.Equal("Customers", suggestions[0].Table);
+Assert.Contains("Email", suggestions[0].Columns);
+
+// Test a query with JOIN and ORDER BY
+var complexSql = @"SELECT [o].[Id] FROM [Orders] AS [o]
+                    INNER JOIN [Customers] AS [c] ON [o].[CustomerId] = [c].[Id]
+                    WHERE [o].[Status] = @p0
+                    ORDER BY [o].[CreatedAt]";
+
+var complexSuggestions = analyzer.Analyze(complexSql);
+var ordersSuggestion = Assert.Single(complexSuggestions, x => x.Table == "Orders");
+Assert.Contains("CustomerId", ordersSuggestion.Columns);
+Assert.Contains("Status", ordersSuggestion.Columns);
+Assert.Contains("CreatedAt", ordersSuggestion.Columns);
+
+// Test that ToSqlHint generates proper CREATE INDEX statement
+var suggestion = new IndexSuggestion("Orders", new[] { "CustomerId", "Status" }, "test");
+Assert.Equal("CREATE INDEX IX_Orders_CustomerId_Status ON Orders (CustomerId, Status);", suggestion.ToSqlHint());
+```
+
 ## EndToEndInterceptionTestsExtensions
 
 Extension methods for `EndToEndInterceptionTests` that provide utility functionality for end-to-end testing of EF Core slow query interception scenarios. These methods simplify the creation of test infrastructure, including in-memory database connections, slow query interceptors with configurable thresholds, and utilities for inspecting captured slow queries.
