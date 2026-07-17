@@ -21,7 +21,7 @@ public static class SlowQueryRankingExtensions
         var snapshot = ranking.Snapshot();
         return snapshot.Count == 0
             ? TimeSpan.Zero
-            : TimeSpan.FromMilliseconds(snapshot.Sum(s => s.Duration.TotalMilliseconds));
+            : TimeSpan.FromMilliseconds(snapshot.Sum(static s => s.Duration.TotalMilliseconds));
     }
 
     /// <summary>
@@ -37,7 +37,7 @@ public static class SlowQueryRankingExtensions
         var snapshot = ranking.Snapshot();
         return snapshot.Count == 0
             ? 0.0
-            : snapshot.Average(s => s.Duration.TotalMilliseconds);
+            : snapshot.Average(static s => s.Duration.TotalMilliseconds);
     }
 
     /// <summary>
@@ -46,9 +46,9 @@ public static class SlowQueryRankingExtensions
     /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
     /// <returns>An <see cref="IEnumerable{IndexSuggestion}"/> containing all suggestions.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IEnumerable<EfCore.SlowQueryLog.IndexSuggestion> GetAllSuggestions(this SlowQueryRanking ranking)
+    public static IEnumerable<IndexSuggestion> GetAllSuggestions(this SlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
-        return ranking.Snapshot().SelectMany(s => s.Suggestions);
+        return ranking.Snapshot().SelectMany(static s => s.Suggestions);
     }
 }
