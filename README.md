@@ -129,6 +129,29 @@ The example shows how to create a `SlowQuerySample`, optionally include the
 parameter list, and iterate over any `IndexSuggestion`s to obtain the SQL hint
 that can be logged or displayed.
 
+## SlowQueryInterceptor
+
+The `SlowQueryInterceptor` class is responsible for capturing slow queries and
+providing access to the live ranking of slow queries. It can be used to capture
+slow queries programmatically using the `Capture` method, and provides a
+`Ranking` property to access the live ranking of slow queries. The following
+example demonstrates how to use the `SlowQueryInterceptor` to capture a slow
+query and access the live ranking:
+
+```csharp
+var interceptor = new SlowQueryInterceptor(new SlowQueryLogOptions
+{
+    Threshold = TimeSpan.FromMilliseconds(200),
+});
+
+var command = new SqlCommand("SELECT * FROM Orders WHERE Id = @p0");
+var duration = TimeSpan.FromMilliseconds(850);
+var sample = interceptor.Capture(command, duration);
+
+Console.WriteLine($"Slow query ({sample.Duration.TotalMilliseconds:F0} ms): {sample.Sql}");
+Console.WriteLine($"Live ranking count: {interceptor.Ranking.Snapshot().Count}");
+```
+
 ## How the index heuristic works
 
 The analyzer does **not** build a real SQL parse tree. It scans the statement
