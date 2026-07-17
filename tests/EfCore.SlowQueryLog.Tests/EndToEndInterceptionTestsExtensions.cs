@@ -17,11 +17,7 @@ public static class EndToEndInterceptionTestsExtensions
     /// <param name="test">The test instance.</param>
     /// <returns>A new SQLite connection.</returns>
     public static SqliteConnection CreateInMemoryConnection(this EndToEndInterceptionTests test)
-    {
-        var connection = new SqliteConnection("DataSource=:memory:");
-        connection.Open();
-        return connection;
-    }
+        => new SqliteConnection("DataSource=:memory:");
 
     /// <summary>
     /// Creates a new slow query interceptor with the specified threshold.
@@ -34,6 +30,7 @@ public static class EndToEndInterceptionTestsExtensions
         this EndToEndInterceptionTests test,
         TimeSpan threshold)
     {
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(threshold, TimeSpan.Zero);
         return new SlowQueryInterceptor(new SlowQueryLogOptions { Threshold = threshold });
     }
 
@@ -43,9 +40,7 @@ public static class EndToEndInterceptionTestsExtensions
     /// <param name="test">The test instance.</param>
     /// <returns>A new SlowQueryInterceptor instance.</returns>
     public static SlowQueryInterceptor CreateDefaultSlowQueryInterceptor(this EndToEndInterceptionTests test)
-    {
-        return new SlowQueryInterceptor(new SlowQueryLogOptions { Threshold = TimeSpan.FromTicks(1) });
-    }
+        => new SlowQueryInterceptor(new SlowQueryLogOptions { Threshold = TimeSpan.FromTicks(1) });
 
     /// <summary>
     /// Gets the slow query samples recorded by the interceptor.
@@ -69,7 +64,9 @@ public static class EndToEndInterceptionTestsExtensions
     /// <param name="interceptor">The interceptor to check.</param>
     /// <returns>The number of slow queries recorded.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="interceptor"/> is null.</exception>
-    public static int GetSlowQueryCount(this EndToEndInterceptionTests test, SlowQueryInterceptor interceptor)
+    public static int GetSlowQueryCount(
+        this EndToEndInterceptionTests test,
+        SlowQueryInterceptor interceptor)
     {
         ArgumentNullException.ThrowIfNull(interceptor);
         return interceptor.Ranking.Count;
@@ -81,7 +78,9 @@ public static class EndToEndInterceptionTestsExtensions
     /// <param name="test">The test instance.</param>
     /// <param name="interceptor">The interceptor to clear.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="interceptor"/> is null.</exception>
-    public static void ClearSlowQueries(this EndToEndInterceptionTests test, SlowQueryInterceptor interceptor)
+    public static void ClearSlowQueries(
+        this EndToEndInterceptionTests test,
+        SlowQueryInterceptor interceptor)
     {
         ArgumentNullException.ThrowIfNull(interceptor);
         interceptor.Ranking.Clear();
