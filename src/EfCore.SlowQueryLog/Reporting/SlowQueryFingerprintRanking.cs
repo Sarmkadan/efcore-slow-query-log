@@ -1,0 +1,208 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+
+namespace EfCore.SlowQueryLog.Reporting;
+
+/// <summary>
+/// Thread-safe, bounded ranking of slow query fingerprints (grouped by SQL), ordered by
+/// specified metric. Keeps at most <c>capacity</c> entries.
+/// </summary>
+public sealed class SlowQueryFingerprintRanking
+{
+    private readonly object _gate = new();
+    private readonly List<SlowQueryFingerprint> _items = new();
+    private readonly int _capacity;
+    private readonly RankingMetric _metric;
+
+    public enum RankingMetric
+    {
+        /// <summary>Order by average duration (default)</summary>
+        AverageDuration,
+
+        /// <summary>Order by total cumulative duration</summary>
+        TotalDuration,
+
+        /// <summary>Order by P95 duration</summary>
+        P95Duration,
+
+        /// <summary>Order by max duration</summary>
+        MaxDuration
+    }
+
+    public SlowQueryFingerprintRanking(int capacity, RankingMetric metric = RankingMetric.AverageDuration)
+    {
+        if (capacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(capacity));
+        _capacity = capacity;
+        _metric = metric;
+    }
+
+    public void Add(SlowQuerySample sample)
+    {
+        lock (_gate)
+        {
+            // Group samples by SQL fingerprint
+            var fingerprintMap = _items.ToDictionary(f => f.Sql, f => f);
+
+            if (fingerprintMap.TryGetValue(sample.Sql, out var existing))
+            {
+                // Update existing fingerprint with new sample
+                existing.AddSample(sample);
+            }
+            else
+            {
+                // Add new fingerprint
+                _items.Add(new SlowQueryFingerprint(sample.Sql, sample.Parameters, sample.Suggestions));
+            }
+
+            // Sort by the selected metric
+            SortItems();
+
+            // Keep only top items
+            if (_items.Count > _capacity)
+                _items.RemoveRange(_capacity, _items.Count - _capacity);
+        }
+    }
+
+    public void AddRange(IEnumerable<SlowQuerySample> samples)
+    {
+        lock (_gate)
+        {
+            foreach (var sample in samples)
+            {
+                Add(sample);
+            }
+        }
+    }
+
+    private void SortItems()
+    {
+        _items.Sort(GetComparison());
+    }
+
+    private Comparison<SlowQueryFingerprint> GetComparison()
+    {
+        return _metric switch
+        {
+            RankingMetric.TotalDuration => (a, b) => b.TotalDuration.CompareTo(a.TotalDuration),
+            RankingMetric.P95Duration => (a, b) => b.Percentile95.CompareTo(a.Percentile95),
+            RankingMetric.MaxDuration => (a, b) => b.MaxDuration.CompareTo(a.MaxDuration),
+            _ => (a, b) => b.AverageDuration.CompareTo(a.AverageDuration) // Default to AverageDuration
+        };
+    }
+
+    /// <summary>Returns a snapshot of the current ranking, highest ranked first.</summary>
+    public IReadOnlyList<SlowQueryFingerprint> Snapshot()
+    {
+        lock (_gate)
+            return _items.ToArray();
+    }
+
+    public int Count
+    {
+        get { lock (_gate) return _items.Count; }
+    }
+
+    public void Clear()
+    {
+        lock (_gate)
+            _items.Clear();
+    }
+
+    public RankingMetric Metric
+    {
+        get { lock (_gate) return _metric; }
+    }
+}
+
+/// <summary>
+/// Aggregated statistics for a query fingerprint (grouped by SQL).
+/// </summary>
+public sealed class SlowQueryFingerprint
+{
+    public string Sql { get; set; } = string.Empty;
+
+    public string? Parameters { get; set; }
+
+    public IReadOnlyList<IndexSuggestion> Suggestions { get; set; } = Array.Empty<IndexSuggestion>();
+
+    public int SampleCount { get; set; }
+    public TimeSpan AverageDuration { get; set; }
+    public TimeSpan MaxDuration { get; set; }
+    public TimeSpan MinDuration { get; set; }
+    public TimeSpan TotalDuration { get; set; }
+    public TimeSpan Percentile95 { get; set; }
+
+    public SlowQueryFingerprint()
+    {
+        // Initialize with zero values
+        AverageDuration = TimeSpan.Zero;
+        MaxDuration = TimeSpan.Zero;
+        MinDuration = TimeSpan.MaxValue;
+        TotalDuration = TimeSpan.Zero;
+        Percentile95 = TimeSpan.Zero;
+    }
+
+    public SlowQueryFingerprint(string sql, string? parameters, IReadOnlyList<IndexSuggestion> suggestions)
+    {
+        Sql = sql;
+        Parameters = parameters;
+        Suggestions = suggestions;
+
+        // Initialize with zero values
+        AverageDuration = TimeSpan.Zero;
+        MaxDuration = TimeSpan.Zero;
+        MinDuration = TimeSpan.MaxValue;
+        TotalDuration = TimeSpan.Zero;
+        Percentile95 = TimeSpan.Zero;
+    }
+
+    public void AddSample(SlowQuerySample sample)
+    {
+        SampleCount++;
+        var durationMs = sample.Duration.TotalMilliseconds;
+
+        // Update min/max
+        if (sample.Duration < MinDuration)
+            MinDuration = sample.Duration;
+        if (sample.Duration > MaxDuration)
+            MaxDuration = sample.Duration;
+
+        // Update total
+        TotalDuration = TimeSpan.FromMilliseconds(TotalDuration.TotalMilliseconds + durationMs);
+
+        // Update average
+        AverageDuration = TimeSpan.FromMilliseconds(TotalDuration.TotalMilliseconds / SampleCount);
+
+        // Note: Percentile95 is computed separately via ComputePercentile95 method
+    }
+
+    /// <summary>
+    /// Computes P95 (95th percentile) from the collected samples.
+    /// </summary>
+    public void ComputePercentile95(List<TimeSpan> allDurations)
+    {
+        if (allDurations.Count == 0)
+        {
+            Percentile95 = TimeSpan.Zero;
+            return;
+        }
+
+        if (allDurations.Count == 1)
+        {
+            Percentile95 = allDurations[0];
+            return;
+        }
+
+        // Sort durations
+        allDurations.Sort((a, b) => a.CompareTo(b));
+
+        // Calculate P95 index
+        int index = (int)Math.Ceiling(allDurations.Count * 0.95) - 1;
+        if (index < 0) index = 0;
+        if (index >= allDurations.Count) index = allDurations.Count - 1;
+
+        Percentile95 = allDurations[index];
+    }
+}

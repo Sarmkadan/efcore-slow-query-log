@@ -51,4 +51,55 @@ public static class SlowQueryRankingExtensions
         ArgumentNullException.ThrowIfNull(ranking);
         return ranking.Snapshot().SelectMany(static s => s.Suggestions);
     }
+
+    /// <summary>
+    /// Groups samples by SQL fingerprint and computes aggregated statistics (P95, max duration, etc.).
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>A list of fingerprints with aggregated statistics, ordered by average duration descending.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprints(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        return ranking.GetFingerprints();
+    }
+
+    /// <summary>
+    /// Gets fingerprints ordered by total cumulative duration (TotalTimeRank).
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>A list of fingerprints ordered by total duration descending.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByTotalDuration(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        var fingerprints = ranking.GetFingerprints();
+        return fingerprints.OrderByDescending(f => f.TotalDuration).ToList();
+    }
+
+    /// <summary>
+    /// Gets fingerprints ordered by P95 duration.
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>A list of fingerprints ordered by P95 duration descending.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByP95Duration(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        var fingerprints = ranking.GetFingerprints();
+        return fingerprints.OrderByDescending(f => f.Percentile95).ToList();
+    }
+
+    /// <summary>
+    /// Gets fingerprints ordered by max duration.
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>A list of fingerprints ordered by max duration descending.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByMaxDuration(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        var fingerprints = ranking.GetFingerprints();
+        return fingerprints.OrderByDescending(f => f.MaxDuration).ToList();
+    }
 }
