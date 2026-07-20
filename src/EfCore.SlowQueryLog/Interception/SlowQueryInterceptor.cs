@@ -91,7 +91,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
             Sql = command.CommandText,
             Duration = duration,
             CapturedAt = DateTimeOffset.UtcNow,
-            Parameters = _options.IncludeParameterValues ? FormatParameters(command) : null,
+            Parameters = _options.IncludeParameterValues ? FormatParameters(command, _options.RedactParameters) : null,
             Suggestions = suggestions,
         };
 
@@ -125,13 +125,26 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         _logger.Log(_options.LogLevel, "{SlowQueryReport}", sb.ToString());
     }
 
-    private static string FormatParameters(DbCommand command)
+    private static string FormatParameters(DbCommand command, bool redact)
     {
         if (command.Parameters.Count == 0)
             return "(none)";
+
         var parts = new List<string>(command.Parameters.Count);
         foreach (DbParameter p in command.Parameters)
-            parts.Add($"{p.ParameterName}={p.Value ?? "NULL"}");
+        {
+            if (redact)
+            {
+                // Keep name and type, replace value with '?'
+                var typeInfo = p.DbType.ToString();
+                parts.Add($"{p.ParameterName} ({typeInfo})=?");
+            }
+            else
+            {
+                parts.Add($"{p.ParameterName}={p.Value ?? "NULL"}");
+            }
+        }
+
         return string.Join(", ", parts);
     }
 }

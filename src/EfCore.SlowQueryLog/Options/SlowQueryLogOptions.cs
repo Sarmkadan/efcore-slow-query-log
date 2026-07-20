@@ -41,6 +41,13 @@ public sealed class SlowQueryLogOptions
     /// </summary>
     public Action<SlowQuerySample>? OnSlowQuery { get; set; }
 
+    /// <summary>
+    /// When true (default) parameter values are redacted in captured samples. The
+    /// parameter name and type are retained, but the value is replaced with '?'.
+    /// When false the original behaviour (full value) is used.
+    /// </summary>
+    public bool RedactParameters { get; set; } = true;
+
     internal void Validate()
     {
         if (Threshold <= TimeSpan.Zero)
