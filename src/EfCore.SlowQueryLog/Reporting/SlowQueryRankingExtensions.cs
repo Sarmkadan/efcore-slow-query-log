@@ -102,4 +102,18 @@ public static class SlowQueryRankingExtensions
         var fingerprints = ranking.GetFingerprints();
         return fingerprints.OrderByDescending(f => f.MaxDuration).ToList();
     }
+
+    /// <summary>
+    /// Exports the current ranking (samples and fingerprint aggregates) to a JSON file.
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="filePath">The path of the file to write the JSON report to.</param>
+    /// <param name="indented">If <c>true</c>, the JSON will be formatted with indentation.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> or <paramref name="filePath"/> is null.</exception>
+    public static void ExportToJson(this SlowQueryRanking ranking, string filePath, bool indented = false)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        ArgumentNullException.ThrowIfNull(filePath);
+        SlowQueryReportWriter.WriteReport(filePath, ranking, indented);
+    }
 }
