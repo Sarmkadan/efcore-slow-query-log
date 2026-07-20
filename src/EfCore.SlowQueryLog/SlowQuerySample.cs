@@ -22,12 +22,17 @@ public sealed record SlowQuerySample
 /// <summary>
 /// A naive index recommendation derived from a filter / join / sort column.
 /// </summary>
-public sealed record IndexSuggestion(string Table, IReadOnlyList<string> Columns, string Reason)
+public sealed record IndexSuggestion(string Table, IReadOnlyList<string> Columns, string Reason, IReadOnlyList<string> IncludeColumns = null)
 {
     public string ToSqlHint()
     {
         var cols = string.Join(", ", Columns);
         var name = $"IX_{Table}_{string.Join("_", Columns)}".Replace(".", "_");
+        if (IncludeColumns != null && IncludeColumns.Count > 0)
+        {
+            var includes = string.Join(", ", IncludeColumns);
+            return $"CREATE INDEX {name} ON {Table} ({cols}) INCLUDE ({includes});";
+        }
         return $"CREATE INDEX {name} ON {Table} ({cols});";
     }
 }

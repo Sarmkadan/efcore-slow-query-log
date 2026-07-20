@@ -42,6 +42,8 @@ public sealed partial class IndexSuggestionAnalyzer
         var aliasMap = BuildAliasMap(sql);
         // table -> ordered distinct columns
         var byTable = new Dictionary<string, List<(string col, string reason)>>(StringComparer.OrdinalIgnoreCase);
+        // table -> include columns (for ORDER BY columns)
+        var includeColumns = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
 
         void Add(string? tbl, string col, string reason)
         {
@@ -54,13 +56,26 @@ public sealed partial class IndexSuggestionAnalyzer
                 list.Add((col, reason));
         }
 
+        void AddInclude(string? tbl, string col)
+        {
+            var table = Resolve(tbl, aliasMap);
+            if (table is null || string.IsNullOrEmpty(col))
+                return;
+            if (!includeColumns.TryGetValue(table, out var list))
+                includeColumns[table] = list = new();
+            if (!list.Any(x => string.Equals(x, col, StringComparison.OrdinalIgnoreCase)))
+                list.Add(col);
+        }
+
         foreach (Match w in WhereClause().Matches(sql))
             foreach (Match p in Predicate().Matches(w.Groups["body"].Value))
                 Add(p.Groups["tbl"].Value, p.Groups["col"].Value, "filtered in WHERE");
 
         foreach (Match j in JoinClause().Matches(sql))
+        {
             foreach (Match p in Predicate().Matches(j.Groups["body"].Value))
                 Add(p.Groups["tbl"].Value, p.Groups["col"].Value, "join key");
+        }
 
         foreach (Match o in OrderByClause().Matches(sql))
         {
@@ -68,7 +83,10 @@ public sealed partial class IndexSuggestionAnalyzer
             {
                 var m = Regex.Match(term.Trim(), Ident, RegexOptions.IgnoreCase);
                 if (m.Success)
+                {
                     Add(m.Groups["tbl"].Value, m.Groups["col"].Value, "sort column");
+                    AddInclude(m.Groups["tbl"].Value, m.Groups["col"].Value);
+                }
             }
         }
 
@@ -76,8 +94,9 @@ public sealed partial class IndexSuggestionAnalyzer
         foreach (var (table, cols) in byTable)
         {
             var columns = cols.Select(c => c.col).ToArray();
+            var includeCols = includeColumns.TryGetValue(table, out var incList) ? incList : null;
             var reason = string.Join("; ", cols.Select(c => $"{c.col} ({c.reason})").Distinct());
-            result.Add(new IndexSuggestion(table, columns, reason));
+            result.Add(new IndexSuggestion(table, columns, reason, includeCols));
         }
         return result;
     }
@@ -109,4 +128,7 @@ public sealed partial class IndexSuggestionAnalyzer
         }
         return map;
     }
+
+[GeneratedRegex(Ident)]
+private static partial Regex Identifier();
 }
