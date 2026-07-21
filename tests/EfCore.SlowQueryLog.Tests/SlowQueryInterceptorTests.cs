@@ -69,6 +69,7 @@ public class SlowQueryInterceptorTests
         {
             Threshold = TimeSpan.FromMilliseconds(1),
             IncludeParameterValues = true,
+            RedactParameters = false,
         });
         var sample = withParams.Capture(Command("SELECT @p0", ("@p0", 42)), TimeSpan.FromMilliseconds(50));
         Assert.NotNull(sample!.Parameters);
@@ -81,6 +82,35 @@ public class SlowQueryInterceptorTests
         });
         var sample2 = noParams.Capture(Command("SELECT @p0", ("@p0", 42)), TimeSpan.FromMilliseconds(50));
         Assert.Null(sample2!.Parameters);
+    }
+
+    /// <summary>
+    /// Verifies that parameters are redacted when RedactParameters is enabled.
+    /// </summary>
+    [Fact]
+    public void RedactParameters_works()
+    {
+        var redacted = new SlowQueryInterceptor(new SlowQueryLogOptions
+        {
+            Threshold = TimeSpan.FromMilliseconds(1),
+            IncludeParameterValues = true,
+            RedactParameters = true,
+        });
+        var sample1 = redacted.Capture(Command("SELECT @p0", ("@p0", 42)), TimeSpan.FromMilliseconds(50));
+        Assert.NotNull(sample1!.Parameters);
+        Assert.Contains("=?", sample1.Parameters);
+        Assert.DoesNotContain("42", sample1.Parameters);
+
+        var notRedacted = new SlowQueryInterceptor(new SlowQueryLogOptions
+        {
+            Threshold = TimeSpan.FromMilliseconds(1),
+            IncludeParameterValues = true,
+            RedactParameters = false,
+        });
+        var sample2 = notRedacted.Capture(Command("SELECT @p0", ("@p0", 42)), TimeSpan.FromMilliseconds(50));
+        Assert.NotNull(sample2!.Parameters);
+        Assert.Contains("42", sample2.Parameters);
+        Assert.DoesNotContain("=?", sample2.Parameters);
     }
 
     /// <summary>
