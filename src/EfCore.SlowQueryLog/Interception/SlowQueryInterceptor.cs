@@ -101,7 +101,15 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
         Ranking.Add(sample);
         Report(sample);
-        _options.OnSlowQuery?.Invoke(sample);
+        try
+        {
+            _options.OnSlowQuery?.Invoke(sample);
+        }
+        catch
+        {
+            // Exceptions in the callback must not break query execution
+        }
+
         return sample;
     }
 

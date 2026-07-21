@@ -128,4 +128,21 @@ public class SlowQueryInterceptorTests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             new SlowQueryInterceptor(new SlowQueryLogOptions { Threshold = TimeSpan.Zero }));
     }
+
+    /// <summary>
+    /// Verifies that exceptions in the OnSlowQuery callback do not break query execution.
+    /// </summary>
+    [Fact]
+    public void OnSlowQuery_callback_exception_does_not_break_execution()
+    {
+        var interceptor = new SlowQueryInterceptor(new SlowQueryLogOptions
+        {
+            Threshold = TimeSpan.FromMilliseconds(1),
+            OnSlowQuery = s => throw new InvalidOperationException("Callback failed")
+        });
+
+        // This should not throw even though the callback throws
+        var sample = interceptor.Capture(Command("SELECT 1"), TimeSpan.FromMilliseconds(200));
+        Assert.NotNull(sample);
+    }
 }
