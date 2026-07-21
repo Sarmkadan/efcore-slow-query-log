@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
 namespace EfCore.SlowQueryLog.Options;
@@ -12,6 +14,13 @@ public sealed class SlowQueryLogOptions
     /// Defaults to 500ms.
     /// </summary>
     public TimeSpan Threshold { get; set; } = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>
+    /// Per‑provider threshold overrides. The key is the provider's connection type name
+    /// (e.g. <c>SqlConnection</c>, <c>SqliteConnection</c>). If a provider name is present
+    /// in this dictionary its value is used instead of <see cref="Threshold"/>.
+    /// </summary>
+    public IDictionary<string, TimeSpan> ProviderThresholds { get; set; } = new Dictionary<string, TimeSpan>();
 
     /// <summary>
     /// Log level used when a slow query is reported. Defaults to <see cref="LogLevel.Warning"/>.
@@ -31,7 +40,7 @@ public sealed class SlowQueryLogOptions
     public bool SuggestIndexes { get; set; } = true;
 
     /// <summary>
-    /// How many of the slowest queries to retain in the in-memory ranking. Defaults to 25.
+    /// How many of the slowest queries to retain in the in‑memory ranking. Defaults to 25.
     /// </summary>
     public int RankingCapacity { get; set; } = 25;
 
@@ -52,7 +61,20 @@ public sealed class SlowQueryLogOptions
     {
         if (Threshold <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(Threshold), "Threshold must be positive.");
+
         if (RankingCapacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(RankingCapacity), "RankingCapacity must be positive.");
+
+        if (ProviderThresholds == null)
+            return; // nothing to validate
+
+        foreach (var kvp in ProviderThresholds)
+        {
+            if (string.IsNullOrWhiteSpace(kvp.Key))
+                throw new ArgumentException("Provider name in ProviderThresholds cannot be null or whitespace.", nameof(ProviderThresholds));
+
+            if (kvp.Value <= TimeSpan.Zero)
+                throw new ArgumentOutOfRangeException(nameof(ProviderThresholds), $"Threshold for provider '{kvp.Key}' must be positive.");
+        }
     }
 }

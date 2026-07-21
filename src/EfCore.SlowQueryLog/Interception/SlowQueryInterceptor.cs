@@ -1,3 +1,4 @@
+using System;
 using System.Data.Common;
 using System.Text;
 using EfCore.SlowQueryLog.Analysis;
@@ -79,7 +80,10 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     /// </summary>
     public SlowQuerySample? Capture(DbCommand command, TimeSpan duration)
     {
-        if (duration < _options.Threshold)
+        // Determine the effective threshold, taking per‑provider overrides into account.
+        var effectiveThreshold = GetEffectiveThreshold(command);
+
+        if (duration < effectiveThreshold)
             return null;
 
         var suggestions = _options.SuggestIndexes
@@ -99,6 +103,20 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         Report(sample);
         _options.OnSlowQuery?.Invoke(sample);
         return sample;
+    }
+
+    private TimeSpan GetEffectiveThreshold(DbCommand command)
+    {
+        // Use the connection type name as the provider identifier.
+        var providerName = command?.Connection?.GetType().Name ?? string.Empty;
+
+        if (_options.ProviderThresholds != null &&
+            _options.ProviderThresholds.TryGetValue(providerName, out var providerThreshold))
+        {
+            return providerThreshold;
+        }
+
+        return _options.Threshold;
     }
 
     private void Report(SlowQuerySample sample)
