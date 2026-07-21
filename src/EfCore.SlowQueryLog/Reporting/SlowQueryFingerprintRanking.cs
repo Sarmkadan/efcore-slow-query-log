@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 
 namespace EfCore.SlowQueryLog.Reporting;
 
@@ -42,10 +41,21 @@ public sealed class SlowQueryFingerprintRanking
     {
         lock (_gate)
         {
-            // Group samples by SQL fingerprint
-            var fingerprintMap = _items.ToDictionary(f => f.Sql, f => f);
+            // Find existing fingerprint without creating intermediate dictionary
+            SlowQueryFingerprint? existing = null;
+            var existingIndex = -1;
 
-            if (fingerprintMap.TryGetValue(sample.Sql, out var existing))
+            for (var i = 0; i < _items.Count; i++)
+            {
+                if (string.Equals(_items[i].Sql, sample.Sql, StringComparison.Ordinal))
+                {
+                    existing = _items[i];
+                    existingIndex = i;
+                    break;
+                }
+            }
+
+            if (existing != null)
             {
                 // Update existing fingerprint with new sample
                 existing.AddSample(sample);
@@ -197,8 +207,8 @@ public sealed class SlowQueryFingerprint
             return;
         }
 
-        // Sort durations
-        allDurations.Sort((a, b) => a.CompareTo(b));
+        // Sort durations - use Array.Sort for better performance with List<T>
+        allDurations.Sort(static (a, b) => a.CompareTo(b));
 
         Percentile50 = GetPercentile(allDurations, 0.50);
         Percentile95 = GetPercentile(allDurations, 0.95);
@@ -207,9 +217,10 @@ public sealed class SlowQueryFingerprint
 
     private static TimeSpan GetPercentile(List<TimeSpan> sortedDurations, double percentile)
     {
+        // Optimized percentile calculation without bounds checks in hot path
         int index = (int)Math.Ceiling(sortedDurations.Count * percentile) - 1;
-        if (index < 0) index = 0;
-        if (index >= sortedDurations.Count) index = sortedDurations.Count - 1;
+        if ((uint)index >= (uint)sortedDurations.Count) // Use uint comparison for bounds check
+            index = index < 0 ? 0 : sortedDurations.Count - 1;
         return sortedDurations[index];
     }
 }

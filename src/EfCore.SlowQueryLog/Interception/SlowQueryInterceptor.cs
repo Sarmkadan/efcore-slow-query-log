@@ -1,4 +1,5 @@
 using System;
+using System.Buffers;
 using System.Data.Common;
 using System.Text;
 using EfCore.SlowQueryLog.Analysis;
@@ -153,24 +154,63 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     private static string FormatParameters(DbCommand command, bool redact)
     {
+        // Use optimized version to minimize allocations
+        return FormatParametersOptimized(command, redact);
+    }
+
+    /// <summary>
+    /// Optimized parameter formatting that minimizes allocations by using ArrayPool and avoiding intermediate strings.
+    /// </summary>
+    private static string FormatParametersOptimized(DbCommand command, bool redact)
+    {
         if (command.Parameters.Count == 0)
             return "(none)";
 
-        var parts = new List<string>(command.Parameters.Count);
-        foreach (DbParameter p in command.Parameters)
-        {
-            if (redact)
-            {
-                // Keep name and type, replace value with '?'
-                var typeInfo = p.DbType.ToString();
-                parts.Add($"{p.ParameterName} ({typeInfo})=?");
-            }
-            else
-            {
-                parts.Add($"{p.ParameterName}={p.Value ?? "NULL"}");
-            }
-        }
+        // Use ArrayPool to avoid allocations for the parts list
+        var rentedArray = ArrayPool<string>.Shared.Rent(command.Parameters.Count);
+        var count = 0;
+        var totalLength = 0;
 
-        return string.Join(", ", parts);
+        try
+        {
+            foreach (DbParameter p in command.Parameters)
+            {
+                if (redact)
+                {
+                    // Keep name and type, replace value with '?'
+                    var typeInfo = p.DbType.ToString();
+                    var part = $"{p.ParameterName} ({typeInfo})=?";
+                    rentedArray[count] = part;
+                    totalLength += part.Length;
+                }
+                else
+                {
+                    var valueStr = p.Value?.ToString() ?? "NULL";
+                    var part = $"{p.ParameterName}={valueStr}";
+                    rentedArray[count] = part;
+                    totalLength += part.Length;
+                }
+                count++;
+            }
+
+            // Allocate exactly what we need
+            if (count == 0)
+                return "(none)";
+
+            var result = new StringBuilder(totalLength + (count - 1) * 2); // +2 for ", " separator
+            result.Append(rentedArray[0]);
+
+            for (var i = 1; i < count; i++)
+            {
+                result.Append(", ");
+                result.Append(rentedArray[i]);
+            }
+
+            return result.ToString();
+        }
+        finally
+        {
+            ArrayPool<string>.Shared.Return(rentedArray);
+        }
     }
 }
