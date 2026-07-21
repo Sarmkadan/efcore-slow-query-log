@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 
 namespace EfCore.SlowQueryLog.Analysis;
@@ -129,6 +130,67 @@ public sealed partial class IndexSuggestionAnalyzer
         return map;
     }
 
-[GeneratedRegex(Ident)]
-private static partial Regex Identifier();
+    [GeneratedRegex(Ident)]
+    private static partial Regex Identifier();
+
+    // ------------------------------------------------------------------------
+    // New functionality: render suggestions with grouping and estimated benefit
+    // ------------------------------------------------------------------------
+
+    /// <summary>
+    /// Estimates a simple benefit score for a suggestion.
+    /// The heuristic gives weight to the number of indexed columns and include columns.
+    /// </summary>
+    private static int EstimateBenefit(IndexSuggestion suggestion)
+    {
+        var columnWeight = 10;
+        var includeWeight = 5;
+
+        var colCount = suggestion.Columns?.Count ?? 0;
+        var incCount = suggestion.IncludeColumns?.Count ?? 0;
+
+        return (colCount * columnWeight) + (incCount * includeWeight);
+    }
+
+    /// <summary>
+    /// Renders a collection of <see cref="IndexSuggestion"/> objects as a human‑readable
+    /// multi‑line string. Suggestions are grouped by table name and ordered by the
+    /// estimated benefit (high to low). Within each table the suggestions are also
+    /// ordered by benefit.
+    /// </summary>
+    public string RenderSuggestions(IReadOnlyList<IndexSuggestion> suggestions)
+    {
+        if (suggestions == null || suggestions.Count == 0)
+            return string.Empty;
+
+        var sb = new StringBuilder();
+
+        // Group by table name (case‑insensitive) and order groups alphabetically
+        var groups = suggestions
+            .GroupBy(s => s.Table, StringComparer.OrdinalIgnoreCase)
+            .OrderBy(g => g.Key, StringComparer.OrdinalIgnoreCase);
+
+        foreach (var group in groups)
+        {
+            sb.AppendLine($"Table: {group.Key}");
+
+            // Order suggestions inside the group by estimated benefit descending
+            var ordered = group.OrderByDescending(EstimateBenefit).ToArray();
+
+            foreach (var suggestion in ordered)
+            {
+                var benefit = EstimateBenefit(suggestion);
+                var columns = string.Join(", ", suggestion.Columns ?? Enumerable.Empty<string>());
+                var include = suggestion.IncludeColumns != null && suggestion.IncludeColumns.Any()
+                    ? $" INCLUDE ({string.Join(", ", suggestion.IncludeColumns)})"
+                    : string.Empty;
+
+                sb.AppendLine($"  CREATE INDEX ON {suggestion.Table}({columns}){include} -- Reason: {suggestion.Reason} (benefit: {benefit})");
+            }
+
+            sb.AppendLine(); // blank line between tables
+        }
+
+        return sb.ToString().TrimEnd(); // remove trailing newline
+    }
 }
