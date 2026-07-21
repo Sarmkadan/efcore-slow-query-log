@@ -57,6 +57,13 @@ public sealed class SlowQueryLogOptions
     /// </summary>
     public bool RedactParameters { get; set; } = true;
 
+        /// <summary>
+        /// Sampling rate for slow queries (0.0 to 1.0). When set to a value less than 1.0,
+        /// only a deterministic sample of slow queries will be recorded based on the fingerprint hash.
+        /// This helps bound overhead when many slow queries occur. Defaults to 1.0 (all queries).
+        /// </summary>
+        public double SamplingRate { get; set; } = 1.0;
+
     internal void Validate()
     {
         if (Threshold <= TimeSpan.Zero)
