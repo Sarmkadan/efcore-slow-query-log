@@ -132,7 +132,9 @@ public sealed class SlowQueryFingerprint
     public TimeSpan MaxDuration { get; set; }
     public TimeSpan MinDuration { get; set; }
     public TimeSpan TotalDuration { get; set; }
+    public TimeSpan Percentile50 { get; set; }
     public TimeSpan Percentile95 { get; set; }
+    public TimeSpan Percentile99 { get; set; }
 
     public SlowQueryFingerprint()
     {
@@ -141,7 +143,9 @@ public sealed class SlowQueryFingerprint
         MaxDuration = TimeSpan.Zero;
         MinDuration = TimeSpan.MaxValue;
         TotalDuration = TimeSpan.Zero;
+        Percentile50 = TimeSpan.Zero;
         Percentile95 = TimeSpan.Zero;
+        Percentile99 = TimeSpan.Zero;
     }
 
     public SlowQueryFingerprint(string sql, string? parameters, IReadOnlyList<IndexSuggestion> suggestions)
@@ -155,7 +159,9 @@ public sealed class SlowQueryFingerprint
         MaxDuration = TimeSpan.Zero;
         MinDuration = TimeSpan.MaxValue;
         TotalDuration = TimeSpan.Zero;
+        Percentile50 = TimeSpan.Zero;
         Percentile95 = TimeSpan.Zero;
+        Percentile99 = TimeSpan.Zero;
     }
 
     public void AddSample(SlowQuerySample sample)
@@ -175,34 +181,35 @@ public sealed class SlowQueryFingerprint
         // Update average
         AverageDuration = TimeSpan.FromMilliseconds(TotalDuration.TotalMilliseconds / SampleCount);
 
-        // Note: Percentile95 is computed separately via ComputePercentile95 method
+        // Note: Percentiles are computed separately via ComputePercentiles method
     }
 
     /// <summary>
-    /// Computes P95 (95th percentile) from the collected samples.
+    /// Computes P50, P95, and P99 from the collected samples.
     /// </summary>
-    public void ComputePercentile95(List<TimeSpan> allDurations)
+    public void ComputePercentiles(List<TimeSpan> allDurations)
     {
         if (allDurations.Count == 0)
         {
+            Percentile50 = TimeSpan.Zero;
             Percentile95 = TimeSpan.Zero;
-            return;
-        }
-
-        if (allDurations.Count == 1)
-        {
-            Percentile95 = allDurations[0];
+            Percentile99 = TimeSpan.Zero;
             return;
         }
 
         // Sort durations
         allDurations.Sort((a, b) => a.CompareTo(b));
 
-        // Calculate P95 index
-        int index = (int)Math.Ceiling(allDurations.Count * 0.95) - 1;
-        if (index < 0) index = 0;
-        if (index >= allDurations.Count) index = allDurations.Count - 1;
+        Percentile50 = GetPercentile(allDurations, 0.50);
+        Percentile95 = GetPercentile(allDurations, 0.95);
+        Percentile99 = GetPercentile(allDurations, 0.99);
+    }
 
-        Percentile95 = allDurations[index];
+    private static TimeSpan GetPercentile(List<TimeSpan> sortedDurations, double percentile)
+    {
+        int index = (int)Math.Ceiling(sortedDurations.Count * percentile) - 1;
+        if (index < 0) index = 0;
+        if (index >= sortedDurations.Count) index = sortedDurations.Count - 1;
+        return sortedDurations[index];
     }
 }

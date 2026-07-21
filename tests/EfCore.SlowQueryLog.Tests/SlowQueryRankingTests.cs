@@ -58,6 +58,30 @@ public class SlowQueryRankingTests
     }
 
     /// <summary>
+    /// Verifies that the SlowQueryRanking computes percentiles correctly.
+    /// </summary>
+    [Fact]
+    public void Computes_percentiles_correctly()
+    {
+        var ranking = new SlowQueryRanking(10);
+        var sql = "SELECT 1";
+        
+        // Add 10 samples: 10, 20, 30, ..., 100
+        for (int i = 1; i <= 10; i++)
+        {
+            ranking.Add(new SlowQuerySample { Sql = sql, Duration = TimeSpan.FromMilliseconds(i * 10), CapturedAt = DateTimeOffset.UtcNow });
+        }
+
+        var fingerprints = ranking.GetFingerprints();
+        Assert.Single(fingerprints);
+        var f = fingerprints[0];
+        
+        Assert.Equal(50, f.Percentile50.TotalMilliseconds);
+        Assert.Equal(100, f.Percentile95.TotalMilliseconds);
+        Assert.Equal(100, f.Percentile99.TotalMilliseconds);
+    }
+
+    /// <summary>
     /// Verifies that creating a SlowQueryRanking with a capacity of 0 throws an ArgumentOutOfRangeException.
     /// </summary>
     [Fact]

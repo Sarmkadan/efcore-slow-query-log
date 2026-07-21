@@ -71,7 +71,7 @@ public sealed class SlowQueryRanking
 
                 // Compute P95 from all durations in this group
                 var durations = groupSamples.Select(s => s.Duration).ToList();
-                fingerprint.ComputePercentile95(durations);
+                fingerprint.ComputePercentiles(durations);
             }
 
             // Sort by average duration descending

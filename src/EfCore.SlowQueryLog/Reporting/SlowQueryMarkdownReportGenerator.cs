@@ -112,7 +112,9 @@ public static class SlowQueryMarkdownReportGenerator
                 report.AppendLine($"- Max Duration: {fingerprint.MaxDuration.TotalMilliseconds:N2} ms");
                 report.AppendLine($"- Min Duration: {fingerprint.MinDuration.TotalMilliseconds:N2} ms");
                 report.AppendLine($"- Total Duration: {fingerprint.TotalDuration.TotalMilliseconds:N2} ms");
+                report.AppendLine($"- P50 Duration: {fingerprint.Percentile50.TotalMilliseconds:N2} ms");
                 report.AppendLine($"- P95 Duration: {fingerprint.Percentile95.TotalMilliseconds:N2} ms");
+                report.AppendLine($"- P99 Duration: {fingerprint.Percentile99.TotalMilliseconds:N2} ms");
 
                 if (fingerprint.Parameters != null)
                 {
