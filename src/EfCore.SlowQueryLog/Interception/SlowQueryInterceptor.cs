@@ -75,6 +75,21 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         return await base.ScalarExecutedAsync(command, eventData, result, cancellationToken);
     }
 
+    public override void CommandFailed(DbCommand command, CommandErrorEventData eventData)
+    {
+        Capture(command, eventData.Duration);
+        base.CommandFailed(command, eventData);
+    }
+
+    public override async Task CommandFailedAsync(
+        DbCommand command,
+        CommandErrorEventData eventData,
+        CancellationToken cancellationToken = default)
+    {
+        Capture(command, eventData.Duration);
+        await base.CommandFailedAsync(command, eventData, cancellationToken);
+    }
+
     /// <summary>
     /// Core capture path. Public so it can be exercised directly from tests without a
     /// live database connection.
