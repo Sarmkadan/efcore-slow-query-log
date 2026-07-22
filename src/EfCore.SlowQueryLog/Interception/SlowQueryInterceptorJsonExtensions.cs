@@ -21,7 +21,17 @@ public static class SlowQueryInterceptorJsonExtensions
     /// <returns>A JSON string representing the <see cref="SlowQueryInterceptor"/> instance.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is <c>null</c>.</exception>
     public static string ToJson(this SlowQueryInterceptor value, bool indented = false)
-        => JsonSerializer.Serialize(value, _jsonSerializerOptions);
+    {
+        if (value is null) throw new ArgumentNullException(nameof(value));
+
+        // Clone the base options so we can set WriteIndented without affecting the static instance.
+        var options = new JsonSerializerOptions(_jsonSerializerOptions)
+        {
+            WriteIndented = indented
+        };
+
+        return JsonSerializer.Serialize(value, options);
+    }
 
     /// <summary>
     /// Deserializes a JSON string to a <see cref="SlowQueryInterceptor"/> instance.
@@ -50,7 +60,7 @@ public static class SlowQueryInterceptorJsonExtensions
     /// </summary>
     /// <param name="json">The JSON string to deserialize.</param>
     /// <param name="value">The deserialized <see cref="SlowQueryInterceptor"/> instance, or <c>null</c> if deserialization fails.</param>
-    /// <returns>A value indicating whether the deserialization was successful.</returns>
+    /// <returns>A value indicating whether the deserialization was successful (i.e., a non‑null instance was created).</returns>
     /// <exception cref="ArgumentNullException"><paramref name="json"/> is <c>null</c>.</exception>
     /// <exception cref="ArgumentException"><paramref name="json"/> is empty or whitespace.</exception>
     public static bool TryFromJson(string json, out SlowQueryInterceptor? value)
@@ -61,7 +71,8 @@ public static class SlowQueryInterceptorJsonExtensions
         try
         {
             value = JsonSerializer.Deserialize<SlowQueryInterceptor>(json, _jsonSerializerOptions);
-            return true;
+            // Consider deserialization successful only if we actually obtained a non‑null instance.
+            return value != null;
         }
         catch (JsonException)
         {
