@@ -14,22 +14,22 @@ public static class SlowQueryLogServiceCollectionExtensions
     /// <summary>
     /// Adds the slow query interceptor to the service collection with default options.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <returns>The configured service collection.</returns>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
+    /// <returns>The configured <see cref="IServiceCollection"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="services"/> is <see langword="null"/>.</exception>
     public static IServiceCollection AddSlowQueryLog(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
 
-        return services.AddSlowQueryLog(_ => { });
+        return services.AddSlowQueryLog(static _ => { });
     }
 
     /// <summary>
     /// Adds the slow query interceptor to the service collection with custom configuration.
     /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
     /// <param name="configure">Optional configuration action for the interceptor options.</param>
-    /// <returns>The configured service collection.</returns>
+    /// <returns>The configured <see cref="IServiceCollection"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="services"/> is <see langword="null"/>.</exception>
     public static IServiceCollection AddSlowQueryLog(
         this IServiceCollection services,
@@ -48,9 +48,9 @@ public static class SlowQueryLogServiceCollectionExtensions
     /// <summary>
     /// Adds the slow query interceptor to the service collection with a pre-built interceptor instance.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="interceptor">The interceptor instance to register.</param>
-    /// <returns>The configured service collection.</returns>
+    /// <param name="services">The <see cref="IServiceCollection"/> to add services to.</param>
+    /// <param name="interceptor">The <see cref="SlowQueryInterceptor"/> instance to register.</param>
+    /// <returns>The configured <see cref="IServiceCollection"/>.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="services"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentNullException"><paramref name="interceptor"/> is <see langword="null"/>.</exception>
     public static IServiceCollection AddSlowQueryLog(
