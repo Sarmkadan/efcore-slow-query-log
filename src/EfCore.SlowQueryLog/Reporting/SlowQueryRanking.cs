@@ -5,15 +5,56 @@ namespace EfCore.SlowQueryLog.Reporting;
 
 /// <summary>
 /// Thread-safe, bounded ranking of the slowest queries observed so far, ordered by
-/// duration descending. Keeps at most <c>capacity</c> entries for ranking display,
-/// while maintaining a separate <c>maxSamples</c> limit for the total sample store.
+/// duration descending. Keeps at most <see cref="RankingCapacity"/> entries for ranking display,
+/// while maintaining a separate <see cref="MaxSamples"/> limit for the total sample store.
+///
+/// <para>
+/// Memory is bounded using a two-tier strategy:
+/// <list type="bullet">
+/// <item><description><see cref="MaxSamples"/>: Maximum total samples retained in memory. When this limit is reached,
+/// the oldest samples are evicted using a FIFO strategy to prevent unbounded memory growth.
+/// This ensures the system can handle applications with many distinct SQL texts (dynamic IN-lists,
+/// unparameterized literals) without unbounded memory consumption.</description></item>
+/// <item><description><see cref="RankingCapacity"/>: Maximum samples kept for ranking display. When this limit is reached,
+/// only the slowest queries are retained. This is separate from <see cref="MaxSamples"/> and controls
+/// the size of the ranked results displayed in reports and dashboards.</description></item>
+/// </list>
+/// </para>
+///
+/// <para>
+/// Thread-safety: All public methods are thread-safe. Concurrent calls to <see cref="Add(SlowQuerySample)"/>
+/// from multiple <see cref="global::System.Data.Common.DbContext"/> instances are safe. The implementation uses a single <c>lock</c>
+/// object (<see cref="_gate"/>) to synchronize access to internal collections.
+/// </para>
 /// </summary>
 public sealed class SlowQueryRanking
 {
+    /// <summary>
+    /// Synchronization gate for thread-safe access to internal collections.
+    /// </summary>
     private readonly object _gate = new();
-    private readonly List<SlowQuerySample> _allSamples = new();
+
+    /// <summary>
+    /// All captured samples, bounded by <see cref="MaxSamples"/>. Uses FIFO eviction when full.
+    /// </summary>
+    private readonly List<SlowQuerySample> _allSamples;
+
+    /// <summary>
+    /// Top N samples for ranking display, bounded by <see cref="RankingCapacity"/>.
+    /// Always contains the slowest queries from <see cref="_allSamples"/>.
+    /// </summary>
     private readonly List<SlowQuerySample> _rankedSamples;
+
+    /// <summary>
+    /// Maximum number of samples to retain in memory. When this limit is reached,
+    /// the oldest sample is evicted using FIFO strategy.
+    /// </summary>
     private readonly int _maxSamples;
+
+    /// <summary>
+    /// Maximum number of samples to retain for ranking display. Controls the size
+    /// of the ranked results returned by <see cref="Snapshot()"/>.
+    /// </summary>
     private readonly int _rankingCapacity;
 
     public SlowQueryRanking(int capacity)
@@ -23,34 +64,42 @@ public sealed class SlowQueryRanking
 
     public SlowQueryRanking(int maxSamples, int rankingCapacity = 25)
     {
-        if (maxSamples <= 0)
-            throw new ArgumentOutOfRangeException(nameof(maxSamples));
-        if (rankingCapacity <= 0)
-            throw new ArgumentOutOfRangeException(nameof(rankingCapacity));
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(maxSamples, 0);
+        ArgumentOutOfRangeException.ThrowIfLessThanOrEqual(rankingCapacity, 0);
 
         _maxSamples = maxSamples;
         _rankingCapacity = rankingCapacity;
+        _allSamples = new List<SlowQuerySample>(Math.Min(maxSamples, 1000));
         _rankedSamples = new List<SlowQuerySample>(rankingCapacity);
     }
 
+    /// <summary>
+    /// Adds a slow query sample to the ranking.
+    /// </summary>
+    /// <param name="sample">The slow query sample to add. Cannot be null.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="sample"/> is null.</exception>
+    /// <remarks>
+    /// <para>
+    /// Memory management: When the total number of samples reaches <see cref="MaxSamples"/>, the oldest
+    /// sample (by insertion order) is evicted using a FIFO strategy. This ensures predictable memory
+    /// usage even when the application generates many distinct SQL texts.
+    /// </para>
+    /// <para>
+    /// Thread-safety: This method is thread-safe and can be called concurrently from multiple
+    /// <see cref="DbContext"/> instances.
+    /// </para>
+    /// </remarks>
     public void Add(SlowQuerySample sample)
     {
+        ArgumentNullException.ThrowIfNull(sample);
+
         lock (_gate)
         {
-            // If we've reached maxSamples, remove the slowest sample to make room
-            // This ensures we always keep the slowest queries in memory
+            // If we've reached maxSamples, evict the oldest sample using FIFO strategy
+            // This ensures we keep the most recent samples, which are typically more relevant
             if (_allSamples.Count >= _maxSamples)
             {
-                // Find and remove the slowest sample (highest duration)
-                int slowestIndex = 0;
-                for (int i = 1; i < _allSamples.Count; i++)
-                {
-                    if (_allSamples[i].Duration > _allSamples[slowestIndex].Duration)
-                    {
-                        slowestIndex = i;
-                    }
-                }
-                _allSamples.RemoveAt(slowestIndex);
+                _allSamples.RemoveAt(0); // Remove oldest (FIFO)
             }
 
             _allSamples.Add(sample);
