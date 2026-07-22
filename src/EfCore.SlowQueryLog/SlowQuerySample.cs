@@ -22,7 +22,7 @@ public sealed record SlowQuerySample
 /// <summary>
 /// A naive index recommendation derived from a filter / join / sort column.
 /// </summary>
-public sealed record IndexSuggestion(string Table, IReadOnlyList<string> Columns, string Reason, IReadOnlyList<string> IncludeColumns = null)
+public sealed record IndexSuggestion(string Table, IReadOnlyList<string> Columns, string Reason, IReadOnlyList<string>? IncludeColumns = null)
 {
     public string ToSqlHint()
     {

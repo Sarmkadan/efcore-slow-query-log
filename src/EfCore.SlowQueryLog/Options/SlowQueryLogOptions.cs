@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using Microsoft.Extensions.Logging;
 
@@ -72,6 +73,30 @@ public sealed class SlowQueryLogOptions
     /// </summary>
     public int MaxSamples { get; set; } = 1000;
 
+    /// <summary>
+    /// Maximum number of index suggestions to analyze per minute using a token-bucket algorithm.
+    /// When this limit is reached, additional slow queries will not have index suggestions generated
+    /// until the bucket refills. Set to 0 for unlimited analysis (not recommended for production).
+    /// Defaults to 1000 suggestions per minute.
+    /// </summary>
+    public int MaxAnalysesPerMinute { get; set; } = 1000;
+
+    /// <summary>
+    /// When true, SQL text is queued for background analysis of index suggestions.
+    /// The analysis runs off the hot path on a bounded channel, and samples are dropped
+    /// when the channel is full. This prevents the interceptor from becoming a bottleneck
+    /// during query execution. When false, analysis runs synchronously on the calling thread.
+    /// Defaults to true.
+    /// </summary>
+    public bool AnalyzeOnBackgroundThread { get; set; } = true;
+
+    /// <summary>
+    /// Bounded channel capacity for background analysis queue. When the channel is full,
+    /// new samples are dropped. This prevents unbounded memory growth during spikes in slow queries.
+    /// Defaults to 1000 items.
+    /// </summary>
+    public int BackgroundQueueCapacity { get; set; } = 1000;
+
     internal void Validate()
     {
         if (Threshold <= TimeSpan.Zero)
@@ -82,6 +107,15 @@ public sealed class SlowQueryLogOptions
 
         if (MaxSamples <= 0)
             throw new ArgumentOutOfRangeException(nameof(MaxSamples), "MaxSamples must be positive.");
+
+        if (MaxAnalysesPerMinute < 0)
+            throw new ArgumentOutOfRangeException(nameof(MaxAnalysesPerMinute), "MaxAnalysesPerMinute must be non-negative.");
+
+        if (BackgroundQueueCapacity <= 0)
+            throw new ArgumentOutOfRangeException(nameof(BackgroundQueueCapacity), "BackgroundQueueCapacity must be positive.");
+
+        if (SamplingRate < 0.0 || SamplingRate > 1.0)
+            throw new ArgumentOutOfRangeException(nameof(SamplingRate), "SamplingRate must be between 0.0 and 1.0.");
 
         if (ProviderThresholds == null)
             return; // nothing to validate

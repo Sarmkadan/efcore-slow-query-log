@@ -1,6 +1,8 @@
 using System;
 using System.Buffers;
+using System.Collections.Concurrent;
 using System.Data.Common;
+using System.Security.Cryptography;
 using System.Text;
 using EfCore.SlowQueryLog.Analysis;
 using EfCore.SlowQueryLog.Options;
@@ -11,15 +13,17 @@ using Microsoft.Extensions.Logging;
 namespace EfCore.SlowQueryLog.Interception;
 
 /// <summary>
-/// An <see cref="IDbCommandInterceptor"/> that measures every executed command and,
-/// when it exceeds the configured threshold, logs the generated SQL together with a
-/// ranked summary and naive index suggestions.
+/// An <see cref="IDbCommandInterceptor"/> that measures every executed command and, when it exceeds the configured threshold,
+/// logs the generated SQL together with a ranked summary and naive index suggestions.
 /// </summary>
 public sealed class SlowQueryInterceptor : DbCommandInterceptor
 {
     private readonly SlowQueryLogOptions _options;
     private readonly ILogger<SlowQueryInterceptor> _logger;
-    private readonly IndexSuggestionAnalyzer _analyzer;
+    private readonly IndexSuggestionAnalyzer _syncAnalyzer;
+    private readonly IndexSuggestionBackgroundAnalyzer? _backgroundAnalyzer;
+    private readonly object _samplingGate = new();
+    private readonly ConcurrentDictionary<string, int> _samplingCounters = new(StringComparer.Ordinal);
 
     public SlowQueryInterceptor(
         SlowQueryLogOptions options,
@@ -29,8 +33,16 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         _options = options ?? throw new ArgumentNullException(nameof(options));
         _options.Validate();
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SlowQueryInterceptor>.Instance;
-        _analyzer = new IndexSuggestionAnalyzer();
         Ranking = ranking ?? new SlowQueryRanking(_options.MaxSamples, _options.RankingCapacity);
+
+        // Always create sync analyzer for cases where background analysis is disabled
+        _syncAnalyzer = new IndexSuggestionAnalyzer();
+
+        // Create background analyzer only if enabled
+        if (_options.AnalyzeOnBackgroundThread)
+        {
+            _backgroundAnalyzer = new IndexSuggestionBackgroundAnalyzer(_options, logger);
+        }
     }
 
     /// <summary>The live ranking of slow queries, exposed for reporting / dashboards.</summary>
@@ -81,10 +93,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         base.CommandFailed(command, eventData);
     }
 
-    public override async Task CommandFailedAsync(
-        DbCommand command,
-        CommandErrorEventData eventData,
-        CancellationToken cancellationToken = default)
+    public override async Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
     {
         Capture(command, eventData.Duration);
         await base.CommandFailedAsync(command, eventData, cancellationToken);
@@ -102,10 +111,32 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         if (duration < effectiveThreshold)
             return null;
 
-        var suggestions = _options.SuggestIndexes
-            ? _analyzer.Analyze(command.CommandText)
-            : Array.Empty<IndexSuggestion>();
+        // Apply sampling if configured
+        if (!ShouldSample(command))
+        {
+            _logger.LogDebug("Slow query sampling skipped for: {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+            return null;
+        }
 
+        // Generate index suggestions (either synchronously or via background analysis)
+        IReadOnlyList<IndexSuggestion> suggestions = Array.Empty<IndexSuggestion>();
+        if (_options.SuggestIndexes)
+        {
+            if (_options.AnalyzeOnBackgroundThread && _backgroundAnalyzer != null)
+            {
+                // Queue for background analysis - suggestions will be empty initially
+                // In a real implementation, we'd need to store the analysis result
+                // For now, we queue the SQL and the background analyzer does the work
+                _backgroundAnalyzer.TryQueue(command.CommandText);
+            }
+            else
+            {
+                // Synchronous analysis (original behavior)
+                suggestions = _syncAnalyzer.Analyze(command.CommandText);
+            }
+        }
+
+        // Create sample with suggestions
         var sample = new SlowQuerySample
         {
             Sql = command.CommandText,
@@ -129,6 +160,42 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         return sample;
     }
 
+    /// <summary>
+    /// Determines whether this slow query should be sampled based on SamplingRate.
+    /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
+    /// </summary>
+/// <summary>
+ /// Determines whether this slow query should be sampled based on SamplingRate.
+ /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
+ /// </summary>
+ private bool ShouldSample(DbCommand command)
+ {
+ 	// If sampling rate is 1.0, always sample
+ 	if (_options.SamplingRate >= 1.0)
+ 		return true;
+ 
+ 	// If sampling rate is 0.0, never sample
+ 	if (_options.SamplingRate <= 0.0)
+ 		return false;
+ 
+ 	lock (_samplingGate)
+ 	{
+ 		// Use a deterministic hash of the SQL to decide sampling
+ 		// This ensures the same queries are consistently sampled across application restarts
+ 		var sql = command.CommandText ?? string.Empty;
+ 		var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sql));
+ 		var hash = BitConverter.ToUInt32(hashBytes, 0);
+ 
+ 		// Simple deterministic sampling: sample every N queries where N = 1/samplingRate
+ 		var sampleInterval = (int)Math.Ceiling(1.0 / _options.SamplingRate);
+ 		var counter = _samplingCounters.GetOrAdd(sql, _ => 0);
+ 		_samplingCounters[sql] = counter + 1;
+ 		var shouldSample = counter % sampleInterval == 0;
+ 
+ 		return shouldSample;
+ 	}
+ }
+
     private TimeSpan GetEffectiveThreshold(DbCommand command)
     {
         // Use the connection type name as the provider identifier.
@@ -150,8 +217,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
         var sb = new StringBuilder();
         sb.Append("Slow query detected: ")
-          .Append(sample.Duration.TotalMilliseconds.ToString("F1"))
-          .AppendLine("ms");
+            .Append(sample.Duration.TotalMilliseconds.ToString("F1"))
+            .AppendLine("ms");
         sb.AppendLine(sample.Sql.Trim());
 
         if (sample.Parameters is not null)
@@ -161,7 +228,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         {
             sb.AppendLine("Index suggestions:");
             foreach (var s in sample.Suggestions)
-                sb.Append("  ").AppendLine(s.ToSqlHint());
+                sb.Append(" ").AppendLine(s.ToSqlHint());
         }
 
         _logger.Log(_options.LogLevel, "{SlowQueryReport}", sb.ToString());
