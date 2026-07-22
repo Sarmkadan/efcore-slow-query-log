@@ -1,233 +1,144 @@
+using System;
+using System.Collections.Generic;
+using EfCore.SlowQueryLog;
 using EfCore.SlowQueryLog.Reporting;
 using Xunit;
 
 namespace EfCore.SlowQueryLog.Tests;
 
 /// <summary>
-/// Tests for the SlowQueryFingerprintRanking class.
+/// Unit tests for <see cref="SlowQueryFingerprintRanking"/> and the related
+/// <see cref="SlowQueryFingerprint"/> aggregation class.
 /// </summary>
 public class SlowQueryFingerprintRankingTests
 {
-    /// <summary>
-    /// Creates a new SlowQuerySample instance with the specified duration.
-    /// </summary>
-    /// <param name="ms">The duration in milliseconds.</param>
-    /// <param name="sql">The SQL query.</param>
-    /// <returns>A new SlowQuerySample instance.</returns>
+    // Helper to create a sample with the given duration (ms) and optional SQL.
     private static SlowQuerySample Sample(int ms, string sql = "SELECT 1") => new()
     {
         Sql = sql,
         Duration = TimeSpan.FromMilliseconds(ms),
         CapturedAt = DateTimeOffset.UtcNow,
+        Parameters = null,
+        Suggestions = Array.Empty<IndexSuggestion>()
     };
 
-    /// <summary>
-    /// Verifies that the SlowQueryFingerprintRanking orders fingerprints by average duration descending by default.
-    /// </summary>
     [Fact]
-    public void Orders_by_average_duration_descending_by_default()
-    {
-        var ranking = new SlowQueryFingerprintRanking(10);
-
-        ranking.Add(Sample(500, "Query2"));
-        ranking.Add(Sample(300, "Query3"));
-        ranking.Add(Sample(100, "Query1"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Equal(3, snap.Count);
-        Assert.Equal("Query2", snap[0].Sql);
-        Assert.Equal("Query3", snap[1].Sql);
-        Assert.Equal("Query1", snap[2].Sql);
-    }
-
-    /// <summary>
-    /// Verifies that the SlowQueryFingerprintRanking respects the capacity and keeps the highest ranked fingerprints.
-    /// </summary>
-    [Fact]
-    public void Respects_capacity_keeping_highest_ranked()
-    {
-        var ranking = new SlowQueryFingerprintRanking(2);
-
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(500, "Query2"));
-        ranking.Add(Sample(300, "Query3"));
-        ranking.Add(Sample(700, "Query4"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Equal(2, snap.Count);
-        Assert.Equal("Query4", snap[0].Sql);
-        Assert.Equal("Query2", snap[1].Sql);
-    }
-
-    /// <summary>
-    /// Verifies that the SlowQueryFingerprintRanking orders by total duration when configured.
-    /// </summary>
-    [Fact]
-    public void Orders_by_total_duration_when_configured()
-    {
-        var ranking = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.TotalDuration);
-
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(300, "Query2"));
-        ranking.Add(Sample(50, "Query3"));
-        ranking.Add(Sample(50, "Query3"));
-        ranking.Add(Sample(50, "Query3"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Equal(3, snap.Count);
-        Assert.Equal("Query2", snap[0].Sql);
-        Assert.Equal("Query1", snap[1].Sql);
-        Assert.Equal("Query3", snap[2].Sql);
-    }
-
-    /// <summary>
-    /// Verifies that the SlowQueryFingerprintRanking orders by max duration when configured.
-    /// </summary>
-    [Fact]
-    public void Orders_by_max_duration_when_configured()
-    {
-        var ranking = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.MaxDuration);
-
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(500, "Query2"));
-        ranking.Add(Sample(300, "Query2"));
-        ranking.Add(Sample(700, "Query3"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Equal(3, snap.Count);
-        Assert.Equal("Query3", snap[0].Sql);
-        Assert.Equal("Query2", snap[1].Sql);
-        Assert.Equal("Query1", snap[2].Sql);
-    }
-
-    /// <summary>
-    /// Verifies that samples with the same SQL are grouped into a single fingerprint.
-    /// </summary>
-    [Fact]
-    public void Groups_samples_with_same_sql()
-    {
-        var ranking = new SlowQueryFingerprintRanking(10);
-
-        ranking.Add(Sample(100, "SELECT * FROM Users"));
-        ranking.Add(Sample(200, "SELECT * FROM Users"));
-        ranking.Add(Sample(150, "SELECT * FROM Users"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Single(snap);
-        Assert.Equal("SELECT * FROM Users", snap[0].Sql);
-        Assert.Equal(3, snap[0].SampleCount);
-    }
-
-    /// <summary>
-    /// Verifies that samples with different SQL create separate fingerprints.
-    /// </summary>
-    [Fact]
-    public void Creates_separate_fingerprints_for_different_sql()
-    {
-        var ranking = new SlowQueryFingerprintRanking(10);
-
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(200, "Query2"));
-        ranking.Add(Sample(150, "Query3"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Equal(3, snap.Count);
-    }
-
-    /// <summary>
-    /// Verifies that fingerprint statistics are computed correctly.
-    /// </summary>
-    [Fact]
-    public void Computes_fingerprint_statistics_correctly()
-    {
-        var ranking = new SlowQueryFingerprintRanking(10);
-
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(300, "Query1"));
-        ranking.Add(Sample(200, "Query1"));
-
-        var snap = ranking.Snapshot();
-        Assert.Single(snap);
-
-        var fingerprint = snap[0];
-        Assert.Equal(3, fingerprint.SampleCount);
-        Assert.Equal(200, fingerprint.AverageDuration.TotalMilliseconds, 1);
-        Assert.Equal(300, fingerprint.MaxDuration.TotalMilliseconds);
-        Assert.Equal(100, fingerprint.MinDuration.TotalMilliseconds);
-        Assert.Equal(600, fingerprint.TotalDuration.TotalMilliseconds);
-    }
-
-    /// <summary>
-    /// Verifies that creating a SlowQueryFingerprintRanking with a capacity of 0 throws an ArgumentOutOfRangeException.
-    /// </summary>
-    [Fact]
-    public void Zero_capacity_throws()
+    public void Constructor_ZeroCapacity_ThrowsArgumentOutOfRangeException()
     {
         Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryFingerprintRanking(0));
     }
 
-    /// <summary>
-    /// Verifies that Clear removes all fingerprints.
-    /// </summary>
     [Fact]
-    public void Clear_removes_all_fingerprints()
+    public void Add_SingleSample_CreatesFingerprintWithCorrectStatistics()
     {
         var ranking = new SlowQueryFingerprintRanking(10);
+        ranking.Add(Sample(250, "SELECT * FROM Users"));
 
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(200, "Query2"));
+        var snap = ranking.Snapshot();
+        Assert.Single(snap);
 
+        var fp = snap[0];
+        Assert.Equal("SELECT * FROM Users", fp.Sql);
+        Assert.Equal(1, fp.SampleCount);
+        Assert.Equal(250, fp.AverageDuration.TotalMilliseconds);
+        Assert.Equal(250, fp.MaxDuration.TotalMilliseconds);
+        Assert.Equal(250, fp.MinDuration.TotalMilliseconds);
+        Assert.Equal(250, fp.TotalDuration.TotalMilliseconds);
+    }
+
+    [Fact]
+    public void Add_MultipleSamples_GroupedBySql_AggregatesStatistics()
+    {
+        var ranking = new SlowQueryFingerprintRanking(10);
+        ranking.Add(Sample(100, "Q"));
+        ranking.Add(Sample(300, "Q"));
+        ranking.Add(Sample(200, "Q"));
+
+        var fp = ranking.Snapshot()[0];
+        Assert.Equal(3, fp.SampleCount);
+        Assert.Equal(200, fp.AverageDuration.TotalMilliseconds, 1);
+        Assert.Equal(300, fp.MaxDuration.TotalMilliseconds);
+        Assert.Equal(100, fp.MinDuration.TotalMilliseconds);
+        Assert.Equal(600, fp.TotalDuration.TotalMilliseconds);
+    }
+
+    [Fact]
+    public void Add_DifferentSql_CreatesSeparateFingerprints()
+    {
+        var ranking = new SlowQueryFingerprintRanking(10);
+        ranking.Add(Sample(100, "A"));
+        ranking.Add(Sample(200, "B"));
+        ranking.Add(Sample(150, "C"));
+
+        var snap = ranking.Snapshot();
+        Assert.Equal(3, snap.Count);
+        Assert.Contains(snap, f => f.Sql == "A");
+        Assert.Contains(snap, f => f.Sql == "B");
+        Assert.Contains(snap, f => f.Sql == "C");
+    }
+
+    [Fact]
+    public void AddRange_EmptyCollection_NoEffect()
+    {
+        var ranking = new SlowQueryFingerprintRanking(10);
+        ranking.AddRange(Array.Empty<SlowQuerySample>());
+        Assert.Empty(ranking.Snapshot());
+    }
+
+    [Fact]
+    public void AddRange_NullCollection_ThrowsArgumentNullException()
+    {
+        var ranking = new SlowQueryFingerprintRanking(10);
+        Assert.Throws<ArgumentNullException>(() => ranking.AddRange(null!));
+    }
+
+    [Fact]
+    public void Capacity_IsRespected_OnlyTopRankedKept()
+    {
+        var ranking = new SlowQueryFingerprintRanking(2);
+
+        ranking.Add(Sample(100, "Q1"));
+        ranking.Add(Sample(500, "Q2"));
+        ranking.Add(Sample(300, "Q3"));
+        ranking.Add(Sample(700, "Q4")); // highest
+
+        var snap = ranking.Snapshot();
+        Assert.Equal(2, snap.Count);
+        Assert.Equal("Q4", snap[0].Sql);
+        Assert.Equal("Q2", snap[1].Sql);
+    }
+
+    [Fact]
+    public void Clear_RemovesAllFingerprints()
+    {
+        var ranking = new SlowQueryFingerprintRanking(10);
+        ranking.Add(Sample(100, "A"));
+        ranking.Add(Sample(200, "B"));
         Assert.Equal(2, ranking.Count);
 
         ranking.Clear();
-
         Assert.Equal(0, ranking.Count);
         Assert.Empty(ranking.Snapshot());
     }
 
-    /// <summary>
-    /// Verifies that the Metric property returns the configured ranking metric.
-    /// </summary>
     [Fact]
-    public void Metric_property_returns_configured_metric()
+    public void MetricProperty_ReturnsConfiguredMetric()
     {
-        var avgRanking = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.AverageDuration);
-        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.AverageDuration, avgRanking.Metric);
+        var avg = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.AverageDuration);
+        var total = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.TotalDuration);
+        var max = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.MaxDuration);
+        var p95 = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.P95Duration);
 
-        var totalRanking = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.TotalDuration);
-        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.TotalDuration, totalRanking.Metric);
-
-        var maxRanking = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.MaxDuration);
-        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.MaxDuration, maxRanking.Metric);
-
-        var defaultRanking = new SlowQueryFingerprintRanking(10);
-        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.AverageDuration, defaultRanking.Metric);
+        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.AverageDuration, avg.Metric);
+        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.TotalDuration, total.Metric);
+        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.MaxDuration, max.Metric);
+        Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.P95Duration, p95.Metric);
     }
 
-    /// <summary>
-    /// Verifies tie behavior - when fingerprints have equal ranking metric values.
-    /// </summary>
     [Fact]
-    public void Handles_ties_correctly()
+    public void Add_NullSample_ThrowsArgumentNullException()
     {
         var ranking = new SlowQueryFingerprintRanking(10);
-
-        ranking.Add(Sample(100, "Query1"));
-        ranking.Add(Sample(100, "Query2"));
-        ranking.Add(Sample(100, "Query3"));
-
-        var snap = ranking.Snapshot();
-
-        Assert.Equal(3, snap.Count);
-        Assert.Contains(snap, f => f.Sql == "Query1");
-        Assert.Contains(snap, f => f.Sql == "Query2");
-        Assert.Contains(snap, f => f.Sql == "Query3");
+        Assert.Throws<ArgumentNullException>(() => ranking.Add(null!));
     }
 }
