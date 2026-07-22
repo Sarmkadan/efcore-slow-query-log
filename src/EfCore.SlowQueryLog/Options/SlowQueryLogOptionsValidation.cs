@@ -31,6 +31,11 @@ public static class SlowQueryLogOptionsValidation
             errors.Add($"The {nameof(SlowQueryLogOptions.RankingCapacity)} must be positive, but was {value.RankingCapacity}.");
         }
 
+        if (value.MaxSamples <= 0)
+        {
+            errors.Add($"The {nameof(SlowQueryLogOptions.MaxSamples)} must be positive, but was {value.MaxSamples}.");
+        }
+
         return errors;
     }
 
@@ -44,7 +49,8 @@ public static class SlowQueryLogOptionsValidation
     {
         return value is not null
             && value.Threshold > TimeSpan.Zero
-            && value.RankingCapacity > 0;
+            && value.RankingCapacity > 0
+            && value.MaxSamples > 0;
     }
 
     /// <summary>
@@ -67,6 +73,11 @@ public static class SlowQueryLogOptionsValidation
         if (value.RankingCapacity <= 0)
         {
             errors.Add($"The {nameof(SlowQueryLogOptions.RankingCapacity)} must be positive, but was {value.RankingCapacity}.");
+        }
+
+        if (value.MaxSamples <= 0)
+        {
+            errors.Add($"The {nameof(SlowQueryLogOptions.MaxSamples)} must be positive, but was {value.MaxSamples}.");
         }
 
         if (errors.Count > 0)

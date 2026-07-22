@@ -161,6 +161,26 @@ public static class SlowQueryLogOptionsExtensions
     }
 
     /// <summary>
+    /// Configures the maximum number of slow query samples to retain in memory.
+    /// </summary>
+    /// <param name="options">The options instance to configure. Cannot be <see langword="null"/>.</param>
+    /// <param name="maxSamples">The maximum number of samples to retain. Must be a positive integer.</param>
+    /// <returns>The configured <see cref="SlowQueryLogOptions"/> instance for fluent chaining.</returns>
+    /// <exception cref="ArgumentNullException"><paramref name="options"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="maxSamples"/> is not positive.</exception>
+    public static SlowQueryLogOptions WithMaxSamples(this SlowQueryLogOptions options, int maxSamples)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        if (maxSamples <= 0)
+        {
+            throw new ArgumentOutOfRangeException(nameof(maxSamples), "MaxSamples must be positive.");
+        }
+
+        options.MaxSamples = maxSamples;
+        return options;
+    }
+
+    /// <summary>
     /// Sets a callback that is invoked for every slow query.
     /// </summary>
     /// <param name="options">The options instance to configure. Cannot be <see langword="null"/>.</param>
@@ -219,6 +239,7 @@ public static class SlowQueryLogOptionsExtensions
             IncludeParameterValues = false,
             SuggestIndexes = true,
             RankingCapacity = 50,
+            MaxSamples = 1000,
             OnSlowQuery = null
         };
     }
@@ -243,6 +264,7 @@ public static class SlowQueryLogOptionsExtensions
             IncludeParameterValues = false,
             SuggestIndexes = true,
             RankingCapacity = 100,
+            MaxSamples = 2000,
             OnSlowQuery = null
         };
     }
@@ -267,6 +289,7 @@ public static class SlowQueryLogOptionsExtensions
             IncludeParameterValues = true,
             SuggestIndexes = true,
             RankingCapacity = 200,
+            MaxSamples = 5000,
             OnSlowQuery = null
         };
     }
@@ -291,6 +314,7 @@ public static class SlowQueryLogOptionsExtensions
             IncludeParameterValues = true,
             SuggestIndexes = true,
             RankingCapacity = 1000,
+            MaxSamples = 10000,
             OnSlowQuery = null
         };
     }

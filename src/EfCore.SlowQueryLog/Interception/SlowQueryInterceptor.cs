@@ -30,7 +30,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         _options.Validate();
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<SlowQueryInterceptor>.Instance;
         _analyzer = new IndexSuggestionAnalyzer();
-        Ranking = ranking ?? new SlowQueryRanking(_options.RankingCapacity);
+        Ranking = ranking ?? new SlowQueryRanking(_options.MaxSamples, _options.RankingCapacity);
     }
 
     /// <summary>The live ranking of slow queries, exposed for reporting / dashboards.</summary>

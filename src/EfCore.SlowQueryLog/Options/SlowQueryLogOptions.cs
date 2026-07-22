@@ -57,12 +57,20 @@ public sealed class SlowQueryLogOptions
     /// </summary>
     public bool RedactParameters { get; set; } = true;
 
-        /// <summary>
-        /// Sampling rate for slow queries (0.0 to 1.0). When set to a value less than 1.0,
-        /// only a deterministic sample of slow queries will be recorded based on the fingerprint hash.
-        /// This helps bound overhead when many slow queries occur. Defaults to 1.0 (all queries).
-        /// </summary>
-        public double SamplingRate { get; set; } = 1.0;
+    /// <summary>
+    /// Sampling rate for slow queries (0.0 to 1.0). When set to a value less than 1.0,
+    /// only a deterministic sample of slow queries will be recorded based on the fingerprint hash.
+    /// This helps bound overhead when many slow queries occur. Defaults to 1.0 (all queries).
+    /// </summary>
+    public double SamplingRate { get; set; } = 1.0;
+
+    /// <summary>
+    /// Maximum number of slow query samples to retain in memory. When this limit is reached,
+    /// the oldest samples are evicted using a ring-buffer strategy to prevent unbounded memory growth.
+    /// Defaults to 1000 samples. This is separate from <see cref="RankingCapacity"/> which controls
+    /// the size of the ranked results displayed in reports.
+    /// </summary>
+    public int MaxSamples { get; set; } = 1000;
 
     internal void Validate()
     {
@@ -71,6 +79,9 @@ public sealed class SlowQueryLogOptions
 
         if (RankingCapacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(RankingCapacity), "RankingCapacity must be positive.");
+
+        if (MaxSamples <= 0)
+            throw new ArgumentOutOfRangeException(nameof(MaxSamples), "MaxSamples must be positive.");
 
         if (ProviderThresholds == null)
             return; // nothing to validate
