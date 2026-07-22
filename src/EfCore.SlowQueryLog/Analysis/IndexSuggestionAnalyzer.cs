@@ -1,3 +1,4 @@
+using System;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -35,12 +36,16 @@ public sealed partial class IndexSuggestionAnalyzer
     /// Produces a set of index suggestions for the supplied SQL. Returns an empty list
     /// when nothing indexable is found.
     /// </summary>
+    /// <param name="sql">The SQL query to analyze.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="sql"/> is null.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="sql"/> is empty or whitespace.</exception>
     public IReadOnlyList<IndexSuggestion> Analyze(string sql)
     {
-        if (string.IsNullOrWhiteSpace(sql))
-            return Array.Empty<IndexSuggestion>();
+        ArgumentNullException.ThrowIfNull(sql);
+        ArgumentException.ThrowIfNullOrEmpty(sql);
 
-        var aliasMap = BuildAliasMap(sql);
+        var normalizedSql = NormalizeQuoting(sql);
+        var aliasMap = BuildAliasMap(normalizedSql);
         // table -> ordered distinct columns
         var byTable = new Dictionary<string, List<(string col, string reason)>>(StringComparer.OrdinalIgnoreCase);
         // table -> include columns (for ORDER BY columns)
@@ -68,17 +73,17 @@ public sealed partial class IndexSuggestionAnalyzer
                 list.Add(col);
         }
 
-        foreach (Match w in WhereClause().Matches(sql))
+        foreach (Match w in WhereClause().Matches(normalizedSql))
             foreach (Match p in Predicate().Matches(w.Groups["body"].Value))
                 Add(p.Groups["tbl"].Value, p.Groups["col"].Value, "filtered in WHERE");
 
-        foreach (Match j in JoinClause().Matches(sql))
+        foreach (Match j in JoinClause().Matches(normalizedSql))
         {
             foreach (Match p in Predicate().Matches(j.Groups["body"].Value))
                 Add(p.Groups["tbl"].Value, p.Groups["col"].Value, "join key");
         }
 
-        foreach (Match o in OrderByClause().Matches(sql))
+        foreach (Match o in OrderByClause().Matches(normalizedSql))
         {
             foreach (var term in o.Groups["body"].Value.Split(','))
             {
@@ -100,6 +105,12 @@ public sealed partial class IndexSuggestionAnalyzer
             result.Add(new IndexSuggestion(table, columns, reason, includeCols));
         }
         return result;
+    }
+
+    private static string NormalizeQuoting(string sql)
+    {
+        // Remove all quotes from identifiers
+        return Regex.Replace(sql, @"[\[\]""`]", string.Empty);
     }
 
     private static string? Resolve(string? tblOrAlias, IReadOnlyDictionary<string, string> aliasMap)
@@ -133,16 +144,16 @@ public sealed partial class IndexSuggestionAnalyzer
     [GeneratedRegex(Ident)]
     private static partial Regex Identifier();
 
-    // ------------------------------------------------------------------------
-    // New functionality: render suggestions with grouping and estimated benefit
-    // ------------------------------------------------------------------------
-
     /// <summary>
     /// Estimates a simple benefit score for a suggestion.
     /// The heuristic gives weight to the number of indexed columns and include columns.
     /// </summary>
+    /// <param name="suggestion">The index suggestion to estimate the benefit for.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="suggestion"/> is null.</exception>
     private static int EstimateBenefit(IndexSuggestion suggestion)
     {
+        ArgumentNullException.ThrowIfNull(suggestion);
+
         var columnWeight = 10;
         var includeWeight = 5;
 
@@ -158,9 +169,13 @@ public sealed partial class IndexSuggestionAnalyzer
     /// estimated benefit (high to low). Within each table the suggestions are also
     /// ordered by benefit.
     /// </summary>
+    /// <param name="suggestions">The index suggestions to render.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="suggestions"/> is null.</exception>
     public string RenderSuggestions(IReadOnlyList<IndexSuggestion> suggestions)
     {
-        if (suggestions == null || suggestions.Count == 0)
+        ArgumentNullException.ThrowIfNull(suggestions);
+
+        if (suggestions.Count == 0)
             return string.Empty;
 
         var sb = new StringBuilder();
