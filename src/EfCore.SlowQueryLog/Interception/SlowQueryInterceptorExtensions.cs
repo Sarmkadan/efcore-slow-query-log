@@ -1,4 +1,5 @@
 using System.Data.Common;
+using EfCore.SlowQueryLog.Analysis;
 using EfCore.SlowQueryLog.Reporting;
 
 namespace EfCore.SlowQueryLog.Interception;
@@ -133,12 +134,13 @@ public static class SlowQueryInterceptorExtensions
     }
 
     /// <summary>
-    /// Gets all index suggestions from all captured queries.
+    /// Gets all aggregated index suggestions from all captured queries.
+    /// Suggestions are deduplicated and ranked by total attributed duration.
     /// </summary>
     /// <param name="interceptor">The <see cref="SlowQueryInterceptor"/> instance.</param>
-    /// <returns>An <see cref="IEnumerable{IndexSuggestion}"/> containing all suggestions across all queries.</returns>
+    /// <returns>An <see cref="IEnumerable{AggregatedIndexSuggestion}"/> containing aggregated suggestions with statistics.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="interceptor"/> is null.</exception>
-    public static IEnumerable<IndexSuggestion> GetAllIndexSuggestions(this SlowQueryInterceptor interceptor)
+    public static IEnumerable<IndexSuggestionAggregator.AggregatedIndexSuggestion> GetAllIndexSuggestions(this SlowQueryInterceptor interceptor)
     {
         ArgumentNullException.ThrowIfNull(interceptor);
         return interceptor.Ranking.GetAllSuggestions();

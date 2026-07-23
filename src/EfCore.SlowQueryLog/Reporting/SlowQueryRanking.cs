@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using EfCore.SlowQueryLog.Analysis;
 
 namespace EfCore.SlowQueryLog.Reporting;
 
@@ -44,6 +45,11 @@ public sealed class SlowQueryRanking
     /// Always contains the slowest queries from <see cref="_allSamples"/>.
     /// </summary>
     private readonly List<SlowQuerySample> _rankedSamples;
+
+    /// <summary>
+    /// Aggregator for index suggestions across all samples.
+    /// </summary>
+    private readonly IndexSuggestionAggregator _suggestionAggregator = new();
 
     /// <summary>
     /// Maximum number of samples to retain in memory. When this limit is reached,
@@ -103,6 +109,12 @@ public sealed class SlowQueryRanking
             }
 
             _allSamples.Add(sample);
+
+            // Aggregate index suggestions from this sample
+            if (sample.Suggestions != null && sample.Suggestions.Count > 0)
+            {
+                _suggestionAggregator.Add(sample.Suggestions, sample.Duration);
+            }
 
             // Maintain the ranked samples (top N by duration)
             UpdateRankedSamples();
@@ -188,22 +200,15 @@ public sealed class SlowQueryRanking
     }
 
     /// <summary>
-    /// Gets all index suggestions from all captured queries.
+    /// Gets all aggregated index suggestions from all captured queries.
+    /// Suggestions are deduplicated and ranked by total attributed duration.
     /// </summary>
-    public IEnumerable<IndexSuggestion> GetAllSuggestions()
+    /// <returns>An enumerable of aggregated index suggestions with statistics.</returns>
+    public IEnumerable<IndexSuggestionAggregator.AggregatedIndexSuggestion> GetAllSuggestions()
     {
         lock (_gate)
         {
-            foreach (var sample in _allSamples)
-            {
-                if (sample.Suggestions != null)
-                {
-                    foreach (var suggestion in sample.Suggestions)
-                    {
-                        yield return suggestion;
-                    }
-                }
-            }
+            return _suggestionAggregator.AllSuggestions();
         }
     }
 

@@ -55,18 +55,18 @@ public static class SlowQueryMarkdownReportGenerator
             var truncatedSql = TruncateSql(fingerprint.Sql, 60);
 
             report.AppendLine($"| {i + 1} | `{TruncateFingerprint(fingerprint.Sql)}` | {fingerprint.SampleCount:N0} " +
-                $"| {fingerprint.AverageDuration.TotalMilliseconds:N2} ms | " +
-                $"{fingerprint.MaxDuration.TotalMilliseconds:N2} ms | " +
-                $"{fingerprint.TotalDuration.TotalMilliseconds:N2} ms | " +
-                $"`{truncatedSql}` |")
-                .Replace("|", "&#124;")
-                .Replace("\n", " ")
-                .Replace("\r", " ");
+                           $"| {fingerprint.AverageDuration.TotalMilliseconds:N2} ms | " +
+                           $"{fingerprint.MaxDuration.TotalMilliseconds:N2} ms | " +
+                           $"{fingerprint.TotalDuration.TotalMilliseconds:N2} ms | " +
+                           $"`{truncatedSql}` |")
+                           .Replace("|", "&#124;")
+                           .Replace("\n", " ")
+                           .Replace("\r", " ");
         }
 
         if (fingerprints.Count > topN)
         {
-            report.AppendLine("| ... | ... | ... | ... | ... | ... | ... |");
+            report.AppendLine($"| ... | ... | ... | ... | ... | ... | ... |");
         }
 
         report.AppendLine();
@@ -77,20 +77,18 @@ public static class SlowQueryMarkdownReportGenerator
         {
             report.AppendLine("## Index Suggestions");
             report.AppendLine();
-            report.AppendLine("| Table | Columns | Reason | Include Columns | Suggested | Total Duration | SQL Hint |");
-            report.AppendLine("|-------|---------|--------|----------------|-----------|----------------|----------|");
+            report.AppendLine("| Table | Columns | Reason | Include Columns | SQL Hint |");
+            report.AppendLine("|-------|---------|--------|----------------|----------|");
 
-            foreach (var suggestion in allSuggestions)
+            foreach (var suggestion in allSuggestions.Distinct())
             {
-                var sqlHint = suggestion.Suggestion.ToSqlHint();
+                var sqlHint = suggestion.ToSqlHint();
                 var truncatedHint = TruncateSql(sqlHint, 80);
 
                 report.AppendLine($"| `{suggestion.Table}` | `{string.Join(", ", suggestion.Columns)}` | " +
-                    $"`{suggestion.Reason}` | " +
-                    $"`{string.Join(", ", suggestion.IncludeColumns ?? Array.Empty<string>())}` | " +
-                    $"{suggestion.Count:N0} times | " +
-                    $"{suggestion.TotalDurationMs:N0} ms | " +
-                    $"`{truncatedHint}` |");
+                               $"`{suggestion.Reason}` | " +
+                               $"`{string.Join(", ", suggestion.IncludeColumns ?? Array.Empty<string>())}` | " +
+                               $"`{truncatedHint}` |");
             }
 
             report.AppendLine();
@@ -128,7 +126,7 @@ public static class SlowQueryMarkdownReportGenerator
                     report.AppendLine("- **Index Suggestions:**");
                     foreach (var suggestion in fingerprint.Suggestions)
                     {
-                        report.AppendLine($" - {suggestion.ToSqlHint()}");
+                        report.AppendLine($"  - {suggestion.ToSqlHint()}");
                     }
                 }
 

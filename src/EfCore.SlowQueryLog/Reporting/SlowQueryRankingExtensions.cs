@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using EfCore.SlowQueryLog.Analysis;
 
 namespace EfCore.SlowQueryLog.Reporting;
 
@@ -41,15 +42,16 @@ public static class SlowQueryRankingExtensions
     }
 
     /// <summary>
-    /// Returns all index suggestions from all queries in the ranking.
+    /// Returns all aggregated index suggestions from all queries in the ranking.
+    /// Suggestions are deduplicated and ranked by total attributed duration.
     /// </summary>
     /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
-    /// <returns>An <see cref="IEnumerable{IndexSuggestion}"/> containing all suggestions.</returns>
+    /// <returns>An <see cref="IEnumerable{AggregatedIndexSuggestion}"/> containing aggregated suggestions with statistics.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IEnumerable<IndexSuggestion> GetAllSuggestions(this SlowQueryRanking ranking)
+    public static IEnumerable<IndexSuggestionAggregator.AggregatedIndexSuggestion> GetAllSuggestions(this SlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
-        return ranking.Snapshot().SelectMany(static s => s.Suggestions);
+        return ranking.GetAllSuggestions();
     }
 
     /// <summary>
