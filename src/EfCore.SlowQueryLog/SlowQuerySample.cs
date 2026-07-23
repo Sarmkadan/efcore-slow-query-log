@@ -17,6 +17,13 @@ public sealed record SlowQuerySample
 
     /// <summary>Index suggestions produced from the SQL. Never null; may be empty.</summary>
     public IReadOnlyList<IndexSuggestion> Suggestions { get; init; } = Array.Empty<IndexSuggestion>();
+
+/// <summary>
+/// Query provenance tags extracted from TagWith comments in the SQL command text.
+/// These tags help identify which LINQ query produced the SQL.
+/// Never null; may be empty.
+/// </summary>
+public IReadOnlyList<string> Tags { get; init; } = Array.Empty<string>();
 }
 
 /// <summary>
