@@ -28,7 +28,7 @@ namespace EfCore.SlowQueryLog.Reporting;
 /// object (<see cref="_gate"/>) to synchronize access to internal collections.
 /// </para>
 /// </summary>
-public sealed class SlowQueryRanking
+public sealed class SlowQueryRanking : ISlowQueryRanking
 {
     /// <summary>
     /// Synchronization gate for thread-safe access to internal collections.
@@ -145,6 +145,42 @@ public sealed class SlowQueryRanking
         lock (_gate)
             return _rankedSamples.ToArray();
     }
+
+    /// <summary>
+    /// Records a slow query sample into the ranking. Equivalent to <see cref="Add(SlowQuerySample)"/>;
+    /// provided to satisfy <see cref="ISlowQueryRanking"/>.
+    /// </summary>
+    /// <param name="sample">The slow query sample to record.</param>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="sample"/> is null.</exception>
+    public void Record(SlowQuerySample sample) => Add(sample);
+
+    /// <summary>
+    /// Returns the top <paramref name="count"/> fingerprints from this ranking, ordered by average duration descending.
+    /// </summary>
+    /// <param name="count">The maximum number of fingerprints to return.</param>
+    /// <returns>A list of at most <paramref name="count"/> fingerprints.</returns>
+    /// <exception cref="ArgumentOutOfRangeException">Thrown if <paramref name="count"/> is negative.</exception>
+    public IReadOnlyList<SlowQueryFingerprint> TopN(int count)
+    {
+        ArgumentOutOfRangeException.ThrowIfNegative(count);
+
+        var fingerprints = GetFingerprints();
+        return count >= fingerprints.Count
+            ? fingerprints
+            : new List<SlowQueryFingerprint>(fingerprints).GetRange(0, count);
+    }
+
+    /// <summary>
+    /// Gets the total duration of all captured slow queries. Equivalent to <see cref="GetTotalDuration"/>;
+    /// provided to satisfy <see cref="ISlowQueryRanking"/>.
+    /// </summary>
+    public TimeSpan TotalDuration => GetTotalDuration();
+
+    /// <summary>
+    /// Gets the average duration, in milliseconds, of all captured slow queries. Equivalent to
+    /// <see cref="GetAverageDuration"/>; provided to satisfy <see cref="ISlowQueryRanking"/>.
+    /// </summary>
+    public double AverageDurationMs => GetAverageDuration();
 
     public int Count
     {

@@ -6,6 +6,25 @@ using Microsoft.Extensions.Logging;
 namespace EfCore.SlowQueryLog.Options;
 
 /// <summary>
+/// Selects which <see cref="Reporting.ISlowQueryRanking"/> implementation is used to rank captured
+/// slow queries.
+/// </summary>
+public enum SlowQueryRankingMode
+{
+    /// <summary>
+    /// Rank individual samples by exact SQL text, retaining the raw slowest samples
+    /// (see <see cref="Reporting.SlowQueryRanking"/>). This is the default.
+    /// </summary>
+    Exact,
+
+    /// <summary>
+    /// Rank normalized SQL fingerprints (samples grouped by SQL text with aggregated statistics),
+    /// see <see cref="Reporting.SlowQueryFingerprintRanking"/>.
+    /// </summary>
+    Fingerprint
+}
+
+/// <summary>
 /// Configuration for the slow query interceptor.
 /// </summary>
 public sealed class SlowQueryLogOptions
@@ -44,6 +63,13 @@ public sealed class SlowQueryLogOptions
     /// How many of the slowest queries to retain in the in‑memory ranking. Defaults to 25.
     /// </summary>
     public int RankingCapacity { get; set; } = 25;
+
+    /// <summary>
+    /// Selects which <see cref="Reporting.ISlowQueryRanking"/> implementation
+    /// <see cref="Reporting.SlowQueryRankingFactory.Create"/> constructs for these options.
+    /// Defaults to <see cref="SlowQueryRankingMode.Exact"/>.
+    /// </summary>
+    public SlowQueryRankingMode RankingMode { get; set; } = SlowQueryRankingMode.Exact;
 
     /// <summary>
     /// Optional sink invoked for every slow query in addition to the logger. Useful for

@@ -13,42 +13,36 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Calculates the total duration of all slow queries in the ranking.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>A <see cref="TimeSpan"/> representing the total duration.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static TimeSpan GetTotalDuration(this SlowQueryRanking ranking)
+    public static TimeSpan GetTotalDuration(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
-        var snapshot = ranking.Snapshot();
-        return snapshot.Count == 0
-            ? TimeSpan.Zero
-            : TimeSpan.FromMilliseconds(snapshot.Sum(static s => s.Duration.TotalMilliseconds));
+        return ranking.TotalDuration;
     }
 
     /// <summary>
     /// Calculates the average duration of the slow queries in the ranking.
     /// Returns 0.0 if there are no queries.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>A double representing the average duration in milliseconds.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static double GetAverageDuration(this SlowQueryRanking ranking)
+    public static double GetAverageDuration(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
-        var snapshot = ranking.Snapshot();
-        return snapshot.Count == 0
-            ? 0.0
-            : snapshot.Average(static s => s.Duration.TotalMilliseconds);
+        return ranking.AverageDurationMs;
     }
 
     /// <summary>
     /// Returns all aggregated index suggestions from all queries in the ranking.
     /// Suggestions are deduplicated and ranked by total attributed duration.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>An <see cref="IEnumerable{AggregatedIndexSuggestion}"/> containing aggregated suggestions with statistics.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IEnumerable<IndexSuggestionAggregator.AggregatedIndexSuggestion> GetAllSuggestions(this SlowQueryRanking ranking)
+    public static IEnumerable<IndexSuggestionAggregator.AggregatedIndexSuggestion> GetAllSuggestions(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         return ranking.GetAllSuggestions();
@@ -122,11 +116,11 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Generates a Markdown-formatted report of the slow queries in this ranking.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <param name="topN">Number of top fingerprints to include (default: 20).</param>
     /// <returns>A Markdown-formatted string with slow query statistics and top fingerprints.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static string GenerateMarkdownReport(this SlowQueryRanking ranking, int topN = 20)
+    public static string GenerateMarkdownReport(this ISlowQueryRanking ranking, int topN = 20)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         return SlowQueryMarkdownReportGenerator.GenerateReport(ranking, topN);
@@ -135,12 +129,12 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Writes a Markdown report file from this ranking.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <param name="filePath">The path to the output Markdown file.</param>
     /// <param name="topN">Number of top fingerprints to include (default: 20).</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> or <paramref name="filePath"/> is null.</exception>
     /// <exception cref="ArgumentException">Thrown if <paramref name="filePath"/> is empty or whitespace.</exception>
-    public static void WriteMarkdownReport(this SlowQueryRanking ranking, string filePath, int topN = 20)
+    public static void WriteMarkdownReport(this ISlowQueryRanking ranking, string filePath, int topN = 20)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);

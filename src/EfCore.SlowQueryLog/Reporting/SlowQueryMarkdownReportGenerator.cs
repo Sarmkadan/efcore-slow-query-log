@@ -11,18 +11,17 @@ namespace EfCore.SlowQueryLog.Reporting;
 public static class SlowQueryMarkdownReportGenerator
 {
     /// <summary>
-    /// Generates a Markdown report from a SlowQueryRanking containing slow query samples.
+    /// Generates a Markdown report from a slow query ranking.
     /// </summary>
-    /// <param name="ranking">The ranking containing slow query samples.</param>
+    /// <param name="ranking">The ranking to report on. Works with any <see cref="ISlowQueryRanking"/> implementation.</param>
     /// <param name="topN">Number of top fingerprints to include in the report (default: 20).</param>
     /// <returns>A Markdown-formatted string with slow query statistics and top fingerprints.</returns>
     /// <exception cref="ArgumentNullException">Thrown if ranking is null.</exception>
-    public static string GenerateReport(SlowQueryRanking ranking, int topN = 20)
+    public static string GenerateReport(ISlowQueryRanking ranking, int topN = 20)
     {
         ArgumentNullException.ThrowIfNull(ranking);
 
-        var samples = ranking.Snapshot();
-        var fingerprints = ranking.GetFingerprints();
+        var fingerprints = ranking.TopN(topN);
 
         var report = new StringBuilder();
 
@@ -37,10 +36,10 @@ public static class SlowQueryMarkdownReportGenerator
         report.AppendLine();
         report.AppendLine("| Metric | Value |");
         report.AppendLine("|--------|-------|");
-        report.AppendLine($"| Total Queries | {samples.Count:N0} |");
+        report.AppendLine($"| Ranked Entries | {ranking.Count:N0} |");
         report.AppendLine($"| Top Fingerprints | {fingerprints.Count:N0} |");
-        report.AppendLine($"| Total Duration | {ranking.GetTotalDuration().TotalMilliseconds:N0} ms |");
-        report.AppendLine($"| Avg Duration | {ranking.GetAverageDuration():N2} ms |");
+        report.AppendLine($"| Total Duration | {ranking.TotalDuration.TotalMilliseconds:N0} ms |");
+        report.AppendLine($"| Avg Duration | {ranking.AverageDurationMs:N2} ms |");
         report.AppendLine();
 
         // Top N fingerprints table
@@ -49,7 +48,7 @@ public static class SlowQueryMarkdownReportGenerator
         report.AppendLine("| Rank | Fingerprint | Count | Avg Duration | Max Duration | Total Duration | Sample SQL |");
         report.AppendLine("|------|-------------|-------|--------------|--------------|----------------|------------|");
 
-        for (int i = 0; i < Math.Min(topN, fingerprints.Count); i++)
+        for (int i = 0; i < fingerprints.Count; i++)
         {
             var fingerprint = fingerprints[i];
             var truncatedSql = TruncateSql(fingerprint.Sql, 60);
@@ -64,7 +63,7 @@ public static class SlowQueryMarkdownReportGenerator
                 .Replace("\r", " ");
         }
 
-        if (fingerprints.Count > topN)
+        if (ranking.Count > fingerprints.Count)
         {
             report.AppendLine("| ... | ... | ... | ... | ... | ... | ... |");
         }
@@ -140,14 +139,14 @@ public static class SlowQueryMarkdownReportGenerator
     }
 
     /// <summary>
-    /// Generates a Markdown report file from a SlowQueryRanking.
+    /// Generates a Markdown report file from a slow query ranking.
     /// </summary>
     /// <param name="filePath">The path to the output Markdown file.</param>
-    /// <param name="ranking">The ranking containing slow query samples.</param>
+    /// <param name="ranking">The ranking to report on. Works with any <see cref="ISlowQueryRanking"/> implementation.</param>
     /// <param name="topN">Number of top fingerprints to include in the report (default: 20).</param>
     /// <exception cref="ArgumentNullException">Thrown if filePath or ranking is null.</exception>
     /// <exception cref="ArgumentException">Thrown if filePath is empty or whitespace.</exception>
-    public static void WriteReport(string filePath, SlowQueryRanking ranking, int topN = 20)
+    public static void WriteReport(string filePath, ISlowQueryRanking ranking, int topN = 20)
     {
         ArgumentNullException.ThrowIfNull(filePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
