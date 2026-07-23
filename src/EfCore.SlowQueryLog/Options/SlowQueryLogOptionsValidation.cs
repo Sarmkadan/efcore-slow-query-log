@@ -1,12 +1,17 @@
 using System;
 using System.Collections.Generic;
-using Microsoft.Extensions.Logging;
 
 namespace EfCore.SlowQueryLog.Options;
 
 /// <summary>
 /// Provides validation methods for <see cref="SlowQueryLogOptions"/> instances.
 /// </summary>
+/// <remarks>
+/// This class is obsolete. All validation logic has been consolidated into <see cref="SlowQueryLogOptions"/>.
+/// Use the instance methods <see cref="SlowQueryLogOptions.Validate()"/>, <see cref="SlowQueryLogOptions.IsValid()"/>
+/// and <see cref="SlowQueryLogOptions.EnsureValid()"/> instead.
+/// </remarks>
+[Obsolete("All validation logic has been consolidated into SlowQueryLogOptions. Use instance methods instead. This class will be removed in a future version.")]
 public static class SlowQueryLogOptionsValidation
 {
     /// <summary>
@@ -15,28 +20,27 @@ public static class SlowQueryLogOptionsValidation
     /// <param name="value">The options to validate.</param>
     /// <returns>An empty list if the options are valid; otherwise, a list of error messages.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when called on an obsolete class.</exception>
+    [Obsolete("Use options.Validate() instead.")]
     public static IReadOnlyList<string> Validate(this SlowQueryLogOptions value)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        var errors = new List<string>();
-
-        if (value.Threshold <= TimeSpan.Zero)
+        // This obsolete class is kept for backwards compatibility only.
+        // In a real application, migrate to using the instance methods directly.
+        try
         {
-            errors.Add($"The {nameof(SlowQueryLogOptions.Threshold)} must be positive, but was {value.Threshold}.");
+            value.Validate();
+            return Array.Empty<string>();
         }
-
-        if (value.RankingCapacity <= 0)
+        catch (ArgumentOutOfRangeException ex) when (ex.ParamName != null)
         {
-            errors.Add($"The {nameof(SlowQueryLogOptions.RankingCapacity)} must be positive, but was {value.RankingCapacity}.");
+            return new[] { ex.Message };
         }
-
-        if (value.MaxSamples <= 0)
+        catch (ArgumentException ex)
         {
-            errors.Add($"The {nameof(SlowQueryLogOptions.MaxSamples)} must be positive, but was {value.MaxSamples}.");
+            return new[] { ex.Message };
         }
-
-        return errors;
     }
 
     /// <summary>
@@ -45,12 +49,19 @@ public static class SlowQueryLogOptionsValidation
     /// <param name="value">The options to check.</param>
     /// <returns><see langword="true"/> if the options are valid; otherwise, <see langword="false"/>.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when called on an obsolete class.</exception>
+    [Obsolete("Use options.IsValid() instead.")]
     public static bool IsValid(this SlowQueryLogOptions value)
     {
-        return value is not null
-            && value.Threshold > TimeSpan.Zero
-            && value.RankingCapacity > 0
-            && value.MaxSamples > 0;
+        try
+        {
+            value.Validate();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     /// <summary>
@@ -59,32 +70,11 @@ public static class SlowQueryLogOptionsValidation
     /// <param name="value">The options to validate.</param>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="value"/> is <see langword="null"/>.</exception>
     /// <exception cref="ArgumentException">Thrown when the options are invalid, containing a list of problems.</exception>
+    /// <exception cref="InvalidOperationException">Thrown when called on an obsolete class.</exception>
+    [Obsolete("Use options.EnsureValid() instead.")]
     public static void EnsureValid(this SlowQueryLogOptions value)
     {
         ArgumentNullException.ThrowIfNull(value);
-
-        var errors = new List<string>();
-
-        if (value.Threshold <= TimeSpan.Zero)
-        {
-            errors.Add($"The {nameof(SlowQueryLogOptions.Threshold)} must be positive, but was {value.Threshold}.");
-        }
-
-        if (value.RankingCapacity <= 0)
-        {
-            errors.Add($"The {nameof(SlowQueryLogOptions.RankingCapacity)} must be positive, but was {value.RankingCapacity}.");
-        }
-
-        if (value.MaxSamples <= 0)
-        {
-            errors.Add($"The {nameof(SlowQueryLogOptions.MaxSamples)} must be positive, but was {value.MaxSamples}.");
-        }
-
-        if (errors.Count > 0)
-        {
-            throw new ArgumentException(
-                $"The {nameof(SlowQueryLogOptions)} instance is invalid. Problems:\n{string.Join(Environment.NewLine, errors)}",
-                nameof(value));
-        }
+        value.Validate();
     }
 }

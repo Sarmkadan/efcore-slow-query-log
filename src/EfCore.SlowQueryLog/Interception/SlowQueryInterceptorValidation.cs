@@ -1,10 +1,14 @@
 using System.Data.Common;
-
-namespace EfCore.SlowQueryLog.Interception;
+using EfCore.SlowQueryLog.Interception;
 
 /// <summary>
 /// Provides validation helpers for <see cref="SlowQueryInterceptor"/> instances.
 /// </summary>
+/// <remarks>
+/// This class is obsolete. Validation is now performed through <see cref="SlowQueryLogOptions.Validate()"/>.
+/// The interceptor validates its options in the constructor, ensuring misconfiguration fails at startup.
+/// </remarks>
+[Obsolete("Validation is now handled through SlowQueryLogOptions.Validate(). This class will be removed in a future version.")]
 public static class SlowQueryInterceptorValidation
 {
     /// <summary>
@@ -13,19 +17,13 @@ public static class SlowQueryInterceptorValidation
     /// <param name="value">The interceptor to validate.</param>
     /// <returns>A list of human-readable validation problems; empty if valid.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
+    [Obsolete("Use SlowQueryLogOptions.Validate() instead.")]
     public static IReadOnlyList<string> Validate(this SlowQueryInterceptor? value)
     {
         ArgumentNullException.ThrowIfNull(value);
 
-        var problems = new List<string>();
-
-        // Ranking validation
-        if (value.Ranking is null)
-        {
-            problems.Add("Ranking property cannot be null.");
-        }
-
-        return problems.AsReadOnly();
+        // The interceptor validates its options in the constructor, so this is now a no-op
+        return Array.Empty<string>();
     }
 
     /// <summary>
@@ -33,24 +31,17 @@ public static class SlowQueryInterceptorValidation
     /// </summary>
     /// <param name="value">The interceptor to check.</param>
     /// <returns><see langword="true"/> if the interceptor is valid; otherwise, <see langword="false"/>.</returns>
-    public static bool IsValid(this SlowQueryInterceptor? value) => value?.Validate().Count == 0;
+    [Obsolete("Use SlowQueryLogOptions.IsValid() instead.")]
+    public static bool IsValid(this SlowQueryInterceptor? value) => value is not null;
 
     /// <summary>
     /// Ensures that the specified <see cref="SlowQueryInterceptor"/> instance is valid.
     /// </summary>
     /// <param name="value">The interceptor to validate.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="value"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown if the interceptor has validation problems.</exception>
+    [Obsolete("Validation is now performed during interceptor construction.")]
     public static void EnsureValid(this SlowQueryInterceptor? value)
     {
         ArgumentNullException.ThrowIfNull(value);
-
-        var problems = value.Validate();
-        if (problems.Count == 0)
-        {
-            return;
-        }
-
-        throw new ArgumentException($"SlowQueryInterceptor is not valid. Problems: {string.Join(" ", problems)}");
     }
 }
