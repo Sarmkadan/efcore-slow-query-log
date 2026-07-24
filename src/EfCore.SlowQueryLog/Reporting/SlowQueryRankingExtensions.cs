@@ -6,7 +6,7 @@ using EfCore.SlowQueryLog.Analysis;
 namespace EfCore.SlowQueryLog.Reporting;
 
 /// <summary>
-/// Provides extension methods for <see cref="SlowQueryRanking"/>.
+/// Provides extension methods for <see cref="SlowQueryRanking"/> and <see cref="ISlowQueryRanking"/>.
 /// </summary>
 public static class SlowQueryRankingExtensions
 {
@@ -139,5 +139,42 @@ public static class SlowQueryRankingExtensions
         ArgumentNullException.ThrowIfNull(ranking);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         SlowQueryMarkdownReportGenerator.WriteReport(filePath, ranking, topN);
+    }
+
+    /// <summary>
+    /// Clears all captured slow queries from the ranking.
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>The <see cref="SlowQueryRanking"/> instance for fluent chaining.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static SlowQueryRanking Clear(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        ranking.Clear();
+        return ranking;
+    }
+
+    /// <summary>
+    /// Gets the number of slow queries currently captured in the ranking.
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>The count of captured slow queries.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static int GetCount(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        return ranking.Count;
+    }
+
+    /// <summary>
+    /// Determines whether any slow queries have been captured in the ranking.
+    /// </summary>
+    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <returns>True if at least one slow query has been captured; otherwise, false.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static bool HasQueries(this SlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+        return ranking.Count > 0;
     }
 }

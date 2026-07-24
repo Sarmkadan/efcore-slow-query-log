@@ -15,11 +15,13 @@ public static class SlowQueryInterceptorExtensions
     /// Clears all captured slow queries from the interceptor's ranking.
     /// </summary>
     /// <param name="interceptor">The <see cref="SlowQueryInterceptor"/> instance.</param>
+    /// <returns>The <see cref="SlowQueryInterceptor"/> instance for fluent chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="interceptor"/> is null.</exception>
-    public static void Clear(this SlowQueryInterceptor interceptor)
+    public static SlowQueryInterceptor Clear(this SlowQueryInterceptor interceptor)
     {
         ArgumentNullException.ThrowIfNull(interceptor);
         interceptor.Ranking.Clear();
+        return interceptor;
     }
 
     /// <summary>

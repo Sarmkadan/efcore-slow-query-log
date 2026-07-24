@@ -22,7 +22,7 @@ public static class SlowQueryInterceptorJsonExtensions
     /// <exception cref="ArgumentNullException"><paramref name="value"/> is <c>null</c>.</exception>
     public static string ToJson(this SlowQueryInterceptor value, bool indented = false)
     {
-        if (value is null) throw new ArgumentNullException(nameof(value));
+        ArgumentNullException.ThrowIfNull(value);
 
         // Clone the base options so we can set WriteIndented without affecting the static instance.
         var options = new JsonSerializerOptions(_jsonSerializerOptions)

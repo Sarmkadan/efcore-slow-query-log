@@ -11,7 +11,7 @@ public static class SlowQueryLogOptionsJsonExtensions
     private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
+        WriteIndented = false,
     };
 
     /// <summary>
@@ -36,15 +36,19 @@ public static class SlowQueryLogOptionsJsonExtensions
     /// Deserializes a JSON string to a <see cref="SlowQueryLogOptions"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize.</param>
-    /// <returns>The deserialized instance, or null if the JSON is null or empty.</returns>
+    /// <returns>The deserialized instance, or null if the JSON is null, empty, or invalid.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
     public static SlowQueryLogOptions? FromJson(string json)
     {
         ArgumentNullException.ThrowIfNull(json);
-        return string.IsNullOrEmpty(json)
-            ? null
-            : JsonSerializer.Deserialize<SlowQueryLogOptions>(json, _options);
+
+        if (string.IsNullOrEmpty(json))
+        {
+            return null;
+        }
+
+        return JsonSerializer.Deserialize<SlowQueryLogOptions>(json, _options);
     }
 
     /// <summary>
@@ -68,7 +72,7 @@ public static class SlowQueryLogOptionsJsonExtensions
         try
         {
             value = JsonSerializer.Deserialize<SlowQueryLogOptions>(json, _options);
-            return true;
+            return value != null;
         }
         catch (JsonException)
         {

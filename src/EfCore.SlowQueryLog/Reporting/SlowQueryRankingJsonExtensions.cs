@@ -10,7 +10,7 @@ public static class SlowQueryRankingJsonExtensions
     private static readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-        WriteIndented = false
+        WriteIndented = false,
     };
 
     /// <summary>
@@ -32,10 +32,28 @@ public static class SlowQueryRankingJsonExtensions
     }
 
     /// <summary>
+    /// Serializes a list of fingerprints to a JSON string.
+    /// </summary>
+    /// <param name="fingerprints">The fingerprints to serialize.</param>
+    /// <param name="indented">Whether to format the JSON with indentation for readability.</param>
+    /// <returns>A JSON string representation of the fingerprints.</returns>
+    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fingerprints"/> is null.</exception>
+    public static string ToJson(this IReadOnlyList<SlowQueryFingerprint> fingerprints, bool indented = false)
+    {
+        ArgumentNullException.ThrowIfNull(fingerprints);
+
+        var options = indented
+            ? new JsonSerializerOptions(_options) { WriteIndented = true }
+            : _options;
+
+        return JsonSerializer.Serialize(fingerprints, options);
+    }
+
+    /// <summary>
     /// Deserializes a JSON string to a <see cref="SlowQueryRanking"/> instance.
     /// </summary>
     /// <param name="json">The JSON string to deserialize.</param>
-    /// <returns>The deserialized instance, or null if the JSON is null or empty.</returns>
+    /// <returns>The deserialized instance, or null if the JSON is null, empty, or invalid.</returns>
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     /// <exception cref="JsonException">Thrown when the JSON is invalid or cannot be deserialized.</exception>
     public static SlowQueryRanking? FromJson(string json)
@@ -59,9 +77,9 @@ public static class SlowQueryRankingJsonExtensions
     /// <exception cref="ArgumentNullException">Thrown when <paramref name="json"/> is null.</exception>
     public static bool TryFromJson(string json, out SlowQueryRanking? value)
     {
-        value = null;
-
         ArgumentNullException.ThrowIfNull(json);
+
+        value = null;
 
         if (string.IsNullOrEmpty(json))
         {
@@ -71,29 +89,11 @@ public static class SlowQueryRankingJsonExtensions
         try
         {
             value = JsonSerializer.Deserialize<SlowQueryRanking>(json, _options);
-            return true;
+            return value != null;
         }
         catch (JsonException)
         {
             return false;
         }
-    }
-
-    /// <summary>
-    /// Serializes fingerprints to JSON.
-    /// </summary>
-    /// <param name="fingerprints">The fingerprints to serialize.</param>
-    /// <param name="indented">Whether to format the JSON with indentation for readability.</param>
-    /// <returns>A JSON string representation of the fingerprints.</returns>
-    /// <exception cref="ArgumentNullException">Thrown when <paramref name="fingerprints"/> is null.</exception>
-    public static string ToJson(this IReadOnlyList<SlowQueryFingerprint> fingerprints, bool indented = false)
-    {
-        ArgumentNullException.ThrowIfNull(fingerprints);
-
-        var options = indented
-            ? new JsonSerializerOptions(_options) { WriteIndented = true }
-            : _options;
-
-        return JsonSerializer.Serialize(fingerprints, options);
     }
 }
