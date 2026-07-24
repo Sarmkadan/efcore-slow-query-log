@@ -5,6 +5,18 @@ using System.Text.RegularExpressions;
 namespace EfCore.SlowQueryLog.Analysis;
 
 /// <summary>
+/// Timeout for regex operations to prevent ReDoS attacks (100ms is reasonable for SQL analysis).
+/// </summary>
+internal static class RegexTimeouts
+{
+    /// <summary>
+    /// Default timeout for all regex operations in IndexSuggestionAnalyzer.
+    /// Set to 100ms to prevent catastrophic backtracking while allowing normal SQL parsing.
+    /// </summary>
+    public static readonly TimeSpan Analysis = TimeSpan.FromMilliseconds(100);
+}
+
+/// <summary>
 /// A deliberately simple, provider-agnostic SQL heuristic. It does not build a real
 /// parse tree - it scans WHERE, JOIN ... ON and ORDER BY fragments and proposes an
 /// index per referenced table/column set. The output is a hint, not a guarantee.
