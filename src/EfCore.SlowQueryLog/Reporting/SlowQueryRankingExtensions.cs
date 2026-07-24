@@ -6,7 +6,7 @@ using EfCore.SlowQueryLog.Analysis;
 namespace EfCore.SlowQueryLog.Reporting;
 
 /// <summary>
-/// Provides extension methods for <see cref="SlowQueryRanking"/> and <see cref="ISlowQueryRanking"/>.
+/// Provides extension methods for <see cref="SlowQueryRanking"/>, <see cref="SlowQueryFingerprintRanking"/>, and <see cref="ISlowQueryRanking"/>.
 /// </summary>
 public static class SlowQueryRankingExtensions
 {
@@ -51,22 +51,28 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Groups samples by SQL fingerprint and computes aggregated statistics (P95, max duration, etc.).
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>A list of fingerprints with aggregated statistics, ordered by average duration descending.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprints(this SlowQueryRanking ranking)
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprints(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
-        return ranking.GetFingerprints();
+
+        return ranking switch
+        {
+            SlowQueryRanking exactRanking => exactRanking.GetFingerprints(),
+            SlowQueryFingerprintRanking fingerprintRanking => fingerprintRanking.Snapshot(),
+            _ => Array.Empty<SlowQueryFingerprint>()
+        };
     }
 
     /// <summary>
     /// Gets fingerprints ordered by total cumulative duration (TotalTimeRank).
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>A list of fingerprints ordered by total duration descending.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByTotalDuration(this SlowQueryRanking ranking)
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByTotalDuration(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         var fingerprints = ranking.GetFingerprints();
@@ -76,10 +82,10 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Gets fingerprints ordered by P95 duration.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>A list of fingerprints ordered by P95 duration descending.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByP95Duration(this SlowQueryRanking ranking)
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByP95Duration(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         var fingerprints = ranking.GetFingerprints();
@@ -89,10 +95,10 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Gets fingerprints ordered by max duration.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>A list of fingerprints ordered by max duration descending.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByMaxDuration(this SlowQueryRanking ranking)
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsByMaxDuration(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         var fingerprints = ranking.GetFingerprints();
@@ -102,11 +108,11 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Exports the current ranking (samples and fingerprint aggregates) to a JSON file.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <param name="filePath">The path of the file to write the JSON report to.</param>
     /// <param name="indented">If <c>true</c>, the JSON will be formatted with indentation.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> or <paramref name="filePath"/> is null.</exception>
-    public static void ExportToJson(this SlowQueryRanking ranking, string filePath, bool indented = false)
+    public static void ExportToJson(this ISlowQueryRanking ranking, string filePath, bool indented = false)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         ArgumentNullException.ThrowIfNull(filePath);
@@ -144,10 +150,10 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Clears all captured slow queries from the ranking.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
-    /// <returns>The <see cref="SlowQueryRanking"/> instance for fluent chaining.</returns>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
+    /// <returns>The <see cref="ISlowQueryRanking"/> instance for fluent chaining.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static SlowQueryRanking Clear(this SlowQueryRanking ranking)
+    public static ISlowQueryRanking Clear(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         ranking.Clear();
@@ -157,10 +163,10 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Gets the number of slow queries currently captured in the ranking.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>The count of captured slow queries.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static int GetCount(this SlowQueryRanking ranking)
+    public static int GetCount(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         return ranking.Count;
@@ -169,12 +175,47 @@ public static class SlowQueryRankingExtensions
     /// <summary>
     /// Determines whether any slow queries have been captured in the ranking.
     /// </summary>
-    /// <param name="ranking">The <see cref="SlowQueryRanking"/> instance.</param>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
     /// <returns>True if at least one slow query has been captured; otherwise, false.</returns>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
-    public static bool HasQueries(this SlowQueryRanking ranking)
+    public static bool HasQueries(this ISlowQueryRanking ranking)
     {
         ArgumentNullException.ThrowIfNull(ranking);
         return ranking.Count > 0;
+    }
+
+    /// <summary>
+    /// Gets the current snapshot of slow query samples from the ranking.
+    /// </summary>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
+    /// <returns>A read-only list of slow query samples.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static IReadOnlyList<SlowQuerySample> GetSamples(this ISlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+
+        return ranking switch
+        {
+            SlowQueryRanking exactRanking => exactRanking.Snapshot(),
+            _ => Array.Empty<SlowQuerySample>()
+        };
+    }
+
+    /// <summary>
+    /// Gets the current snapshot of fingerprints from the ranking.
+    /// </summary>
+    /// <param name="ranking">The <see cref="ISlowQueryRanking"/> instance.</param>
+    /// <returns>A read-only list of fingerprints.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> is null.</exception>
+    public static IReadOnlyList<SlowQueryFingerprint> GetFingerprintsSnapshot(this ISlowQueryRanking ranking)
+    {
+        ArgumentNullException.ThrowIfNull(ranking);
+
+        return ranking switch
+        {
+            SlowQueryFingerprintRanking fingerprintRanking => fingerprintRanking.Snapshot(),
+            SlowQueryRanking exactRanking => exactRanking.GetFingerprints(),
+            _ => Array.Empty<SlowQueryFingerprint>()
+        };
     }
 }
