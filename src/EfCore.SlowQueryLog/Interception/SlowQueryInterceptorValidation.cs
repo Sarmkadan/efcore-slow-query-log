@@ -1,4 +1,5 @@
-using System.Data.Common;
+using System;
+using System.Collections.Generic;
 using EfCore.SlowQueryLog.Interception;
 
 /// <summary>
