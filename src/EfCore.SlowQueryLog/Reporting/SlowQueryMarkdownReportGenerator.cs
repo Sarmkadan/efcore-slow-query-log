@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using EfCore.SlowQueryLog.Reporting;
 
 namespace EfCore.SlowQueryLog.Reporting;
 
@@ -51,16 +52,13 @@ public static class SlowQueryMarkdownReportGenerator
         for (int i = 0; i < fingerprints.Count; i++)
         {
             var fingerprint = fingerprints[i];
-            var truncatedSql = TruncateSql(fingerprint.Sql, 60);
+            var sanitizedSql = SqlSanitizer.SanitizeSql(fingerprint.Sql, 60);
 
-            report.AppendLine($"| {i + 1} | `{TruncateFingerprint(fingerprint.Sql)}` | {fingerprint.SampleCount:N0} " +
+            report.AppendLine($"| {i + 1} | `{SqlSanitizer.SanitizeSql(TruncateFingerprint(fingerprint.Sql))}` | {fingerprint.SampleCount:N0} " +
                 $"| {fingerprint.AverageDuration.TotalMilliseconds:N2} ms | " +
                 $"{fingerprint.MaxDuration.TotalMilliseconds:N2} ms | " +
                 $"{fingerprint.TotalDuration.TotalMilliseconds:N2} ms | " +
-                $"`{truncatedSql}` |")
-                .Replace("|", "&#124;")
-                .Replace("\n", " ")
-                .Replace("\r", " ");
+                $"`{sanitizedSql}` |");
         }
 
         if (ranking.Count > fingerprints.Count)
