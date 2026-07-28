@@ -1,0 +1,1 @@
+public SlowQueryLogOptions : ISlowQueryLogOptions\n\s*\{\n\t// Add fluent configuration extensions: WithThreshold(ms), WithTopN(n), etc. on SlowQueryLogOptions, returning options for chaining. XML docs.\n\t}\n\n\t// Add fluent configuration extensions: WithThreshold(ms), WithTopN(n), etc. on SlowQueryLogOptions, returning options for chaining. XML docs.\n\t}\n
