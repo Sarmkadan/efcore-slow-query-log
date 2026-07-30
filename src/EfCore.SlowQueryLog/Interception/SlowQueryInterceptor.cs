@@ -50,53 +50,69 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData, DbDataReader result)
     {
-        Capture(command, eventData.Duration);
-        return base.ReaderExecuted(command, eventData, result);
+        return CaptureAndProceed(
+            command,
+            eventData.Duration,
+            () => base.ReaderExecuted(command, eventData, result));
     }
 
     public override async ValueTask<DbDataReader> ReaderExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
     {
-        Capture(command, eventData.Duration);
-        return await base.ReaderExecutedAsync(command, eventData, result, cancellationToken);
+        return await CaptureAndProceedAsync(
+            command,
+            eventData.Duration,
+            () => base.ReaderExecutedAsync(command, eventData, result, cancellationToken));
     }
 
     public override int NonQueryExecuted(DbCommand command, CommandExecutedEventData eventData, int result)
     {
-        Capture(command, eventData.Duration);
-        return base.NonQueryExecuted(command, eventData, result);
+        return CaptureAndProceed(
+            command,
+            eventData.Duration,
+            () => base.NonQueryExecuted(command, eventData, result));
     }
 
     public override async ValueTask<int> NonQueryExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
-        Capture(command, eventData.Duration);
-        return await base.NonQueryExecutedAsync(command, eventData, result, cancellationToken);
+        return await CaptureAndProceedAsync(
+            command,
+            eventData.Duration,
+            () => base.NonQueryExecutedAsync(command, eventData, result, cancellationToken));
     }
 
     public override object? ScalarExecuted(DbCommand command, CommandExecutedEventData eventData, object? result)
     {
-        Capture(command, eventData.Duration);
-        return base.ScalarExecuted(command, eventData, result);
+        return CaptureAndProceed(
+            command,
+            eventData.Duration,
+            () => base.ScalarExecuted(command, eventData, result));
     }
 
     public override async ValueTask<object?> ScalarExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, object? result, CancellationToken cancellationToken = default)
     {
-        Capture(command, eventData.Duration);
-        return await base.ScalarExecutedAsync(command, eventData, result, cancellationToken);
+        return await CaptureAndProceedAsync(
+            command,
+            eventData.Duration,
+            () => base.ScalarExecutedAsync(command, eventData, result, cancellationToken));
     }
 
     public override void CommandFailed(DbCommand command, CommandErrorEventData eventData)
     {
-        Capture(command, eventData.Duration);
-        base.CommandFailed(command, eventData);
+        CaptureAndProceed(
+            command,
+            eventData.Duration,
+            () => base.CommandFailed(command, eventData));
     }
 
     public override async Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
     {
-        Capture(command, eventData.Duration);
-        await base.CommandFailedAsync(command, eventData, cancellationToken);
+        await CaptureAndProceedAsync(
+            command,
+            eventData.Duration,
+            () => base.CommandFailedAsync(command, eventData, cancellationToken));
     }
 
     /// <summary>
@@ -160,41 +176,69 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         return sample;
     }
 
+    // Shared helper for synchronous paths
+    private T CaptureAndProceed<T>(DbCommand command, TimeSpan duration, Func<T> baseCall)
+    {
+        Capture(command, duration);
+        return baseCall();
+    }
+
+    // Shared helper for asynchronous paths returning ValueTask<T>
+    private async ValueTask<T> CaptureAndProceedAsync<T>(DbCommand command, TimeSpan duration, Func<ValueTask<T>> baseCall)
+    {
+        Capture(command, duration);
+        return await baseCall();
+    }
+
+    // Shared helper for void synchronous paths
+    private void CaptureAndProceed(DbCommand command, TimeSpan duration, Action baseCall)
+    {
+        Capture(command, duration);
+        baseCall();
+    }
+
+    // Shared helper for async Task paths
+    private async Task CaptureAndProceedAsync(DbCommand command, TimeSpan duration, Func<Task> baseCall)
+    {
+        Capture(command, duration);
+        await baseCall();
+    }
+
     /// <summary>
     /// Determines whether this slow query should be sampled based on SamplingRate.
     /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
     /// </summary>
-/// <summary>
- /// Determines whether this slow query should be sampled based on SamplingRate.
- /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
- /// </summary>
- private bool ShouldSample(DbCommand command)
- {
- 	// If sampling rate is 1.0, always sample
- 	if (_options.SamplingRate >= 1.0)
- 		return true;
- 
- 	// If sampling rate is 0.0, never sample
- 	if (_options.SamplingRate <= 0.0)
- 		return false;
- 
- 	lock (_samplingGate)
- 	{
- 		// Use a deterministic hash of the SQL to decide sampling
- 		// This ensures the same queries are consistently sampled across application restarts
- 		var sql = command.CommandText ?? string.Empty;
- 		var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sql));
- 		var hash = BitConverter.ToUInt32(hashBytes, 0);
- 
- 		// Simple deterministic sampling: sample every N queries where N = 1/samplingRate
- 		var sampleInterval = (int)Math.Ceiling(1.0 / _options.SamplingRate);
- 		var counter = _samplingCounters.GetOrAdd(sql, _ => 0);
- 		_samplingCounters[sql] = counter + 1;
- 		var shouldSample = counter % sampleInterval == 0;
- 
- 		return shouldSample;
- 	}
- }
+    /// <summary>
+    /// Determines whether this slow query should be sampled based on SamplingRate.
+    /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
+    /// </summary>
+    private bool ShouldSample(DbCommand command)
+    {
+        // If sampling rate is 1.0, always sample
+        if (_options.SamplingRate >= 1.0)
+            return true;
+
+        // If sampling rate is 0.0, never sample
+        if (_options.SamplingRate <= 0.0)
+            return false;
+
+        lock (_samplingGate)
+        {
+            // Use a deterministic hash of the SQL to decide sampling
+            // This ensures the same queries are consistently sampled across application restarts
+            var sql = command.CommandText ?? string.Empty;
+            var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sql));
+            var hash = BitConverter.ToUInt32(hashBytes, 0);
+
+            // Simple deterministic sampling: sample every N queries where N = 1/samplingRate
+            var sampleInterval = (int)Math.Ceiling(1.0 / _options.SamplingRate);
+            var counter = _samplingCounters.GetOrAdd(sql, _ => 0);
+            _samplingCounters[sql] = counter + 1;
+            var shouldSample = counter % sampleInterval == 0;
+
+            return shouldSample;
+        }
+    }
 
     private TimeSpan GetEffectiveThreshold(DbCommand command)
     {
