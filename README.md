@@ -336,172 +336,39 @@
 // var captureAllOptions = SlowQueryLogOptionsExtensions.CreateCaptureAll(thresholdMilliseconds: 1);
 // ```
 //
-// ## SlowQueryInterceptorTests
+// ## SlowQueryRankingExtensions
 //
-// `SlowQueryInterceptorTests` is a unit test class that verifies the behavior of the `SlowQueryInterceptor` class. It tests various scenarios including fast queries that should be ignored, slow queries that should be captured and ranked, parameter capturing, callback invocation, and configuration options like index suggestions and threshold validation.
-//
-// The test class demonstrates how to use the interceptor in isolation with synthetic commands and timing, making it useful for understanding the expected behavior of the interceptor without requiring a full database setup.
-//
-// ### Usage Example
-//
-// ```csharp
-// using EfCore.SlowQueryLog;
-// using EfCore.SlowQueryLog.Interception;
-// using Microsoft.Data.Sqlite;
-//
-// // Create an interceptor with a 500ms threshold
-// var interceptor = new SlowQueryInterceptor(new SlowQueryLogOptions
-// {
-//     Threshold = TimeSpan.FromMilliseconds(500),
-//     IncludeParameterValues = true,
-//     SuggestIndexes = true
-// });
-//
-// // Capture a fast query (should return null)
-// var fastCommand = new SqliteCommand { CommandText = \"SELECT 1\" };
-// var fastSample = interceptor.Capture(fastCommand, TimeSpan.FromMilliseconds(10));
-// Console.WriteLine(fastSample); // null
-//
-// // Capture a slow query (should return a SlowQuerySample)
-// var slowCommand = new SqliteCommand { CommandText = \"SELECT * FROM Orders WHERE Status = @p0\" };
-// slowCommand.Parameters.AddWithValue(\"@p0\", \"active\");
-// var slowSample = interceptor.Capture(slowCommand, TimeSpan.FromMilliseconds(850));
-//
-// if (slowSample != null)
-// {
-//     Console.WriteLine($\"Captured: {slowSample.Duration.TotalMilliseconds}ms\");
-//     Console.WriteLine($\"Parameters: {slowSample.Parameters}\");
-//     Console.WriteLine($\"Suggestions: {slowSample.Suggestions.Count}\");
-//     foreach (var suggestion in slowSample.Suggestions)
-//     {
-//         Console.WriteLine($\"  {suggestion.Table}: {string.Join(\", \", suggestion.Columns)}\");
-//     }
-// }
-//
-// // Access the live ranking
-// Console.WriteLine($\"Ranking count: {interceptor.Ranking.Count}\");
-// ```
-//
-// ## IndexSuggestionAnalyzerTests
-//
-// `IndexSuggestionAnalyzerTests` is a unit test class that verifies the index suggestion generation logic in the `IndexSuggestionAnalyzer` class. It tests how the analyzer extracts index suggestions from SQL queries by examining WHERE clauses, JOIN conditions, and ORDER BY clauses, while correctly ignoring parameter markers, numeric literals, and ordinal values in ORDER BY clauses.
+// The `SlowQueryRankingExtensions` static class adds a collection of useful
+// extension methods for `ISlowQueryRanking`. These helpers let you compute
+// aggregate durations, retrieve all index suggestions, obtain fingerprints
+// sorted by various criteria, export the ranking to JSON, and generate Markdown
+// reports.
 //
 // ### Usage Example
 //
 // ```csharp
+// using System;
+// using System.IO;
 // using EfCore.SlowQueryLog.Analysis;
-// using Xunit;
+// using EfCore.SlowQueryLog.Reporting;
 //
-// // Create an instance of the analyzer
-// var analyzer = new IndexSuggestionAnalyzer();
+// // Assume you have a ranking instance (e.g., from an interceptor)
+// ISlowQueryRanking ranking = new SlowQueryRanking();
 //
-// // Test a simple WHERE clause
-// var sql = \"SELECT [c].[Id], [c].[Email] FROM [Customers] AS [c] WHERE [c].[Email] = @p0\";
-// var suggestions = analyzer.Analyze(sql);
+// // After adding samples to the ranking, you can query aggregate data:
+// TimeSpan totalDuration = ranking.GetTotalDuration();
+// double averageMs = ranking.GetAverageDuration();
 //
-// Assert.Single(suggestions);
-// Assert.Equal(\"Customers\", suggestions[0].Table);
-// Assert.Contains(\"Email\", suggestions[0].Columns);
+// // Retrieve all index suggestions across all fingerprints:
+// var allSuggestions = ranking.GetAllSuggestions();
 //
-// // Test a query with JOIN and ORDER BY
-// var complexSql = @\"SELECT [o].[Id] FROM [Orders] AS [o]
-//                     INNER JOIN [Customers] AS [c] ON [o].[CustomerId] = [c].[Id]
-//                     WHERE [o].[Status] = @p0
-//                     ORDER BY [o].[CreatedAt]\";
+// // Get fingerprints sorted by total duration, P95 duration, or max duration:
+// var byTotal = ranking.GetFingerprintsByTotalDuration();
+// var byP95 = ranking.GetFingerprintsByP95Duration();
+// var byMax = ranking.GetFingerprintsByMaxDuration();
 //
-// var complexSuggestions = analyzer.Analyze(complexSql);
-// var ordersSuggestion = Assert.Single(complexSuggestions, x => x.Table == \"Orders\");
-// Assert.Contains(\"CustomerId\", ordersSuggestion.Columns);
-// Assert.Contains(\"Status\", ordersSuggestion.Columns);
-// Assert.Contains(\"CreatedAt\", ordersSuggestion.Columns);
+// // Export the ranking to a JSON file:
+// ranking.ExportToJson(\"ranking.json\"); // writes JSON to the specified path\n\n// Generate a Markdown report as a string:\nstring markdown = ranking.GenerateMarkdownReport();\nFile.WriteAllText(\"ranking.md\", markdown);\n\n// Or write the Markdown report directly to a file:\nranking.WriteMarkdownReport(\"ranking.md\");\n```
 //
-// // Test that ToSqlHint generates proper CREATE INDEX statement
-// var suggestion = new IndexSuggestion(\"Orders\", new[] { \"CustomerId\", \"Status\" }, \"test\");
-// Assert.Equal(\"CREATE INDEX IX_Orders_CustomerId_Status ON Orders (CustomerId, Status);\", suggestion.ToSqlHint());
-// ```
-//
-// ## EndToEndInterceptionTestsExtensions
-//
-// Extension methods for `EndToEndInterceptionTests` that provide utility functionality for end-to-end testing of EF Core slow query interception scenarios. These methods simplify the creation of test infrastructure, including in-memory database connections, slow query interceptors with configurable thresholds, and utilities for inspecting captured slow queries.
-//
-// ### Usage Examples
-//
-// ```csharp
-// using EfCore.SlowQueryLog;
-// using EfCore.SlowQueryLog.Interception;
-// using EfCore.SlowQueryLog.Tests;
-// using Microsoft.Data.Sqlite;
-//
-// // Create a test instance
-// var test = new EndToEndInterceptionTests();
-//
-// // Create an in-memory SQLite connection for testing
-// using var connection = test.CreateInMemoryConnection();
-//
-// // Create a slow query interceptor with a custom threshold
-// var interceptor = test.CreateSlowQueryInterceptor(TimeSpan.FromMilliseconds(300));
-//
-// // Create a slow query interceptor with the default threshold (1 tick)
-// var defaultInterceptor = test.CreateDefaultSlowQueryInterceptor();
-//
-// // Capture a slow query directly
-// var sample = test.CaptureSlowQuery(
-//   interceptor,
-//   \"SELECT * FROM Orders WHERE Status = @p0\",
-//   TimeSpan.FromMilliseconds(850)
-// );
-//
-// if (sample != null)
-// {
-//   Console.WriteLine($\"Captured: {sample.Duration.TotalMilliseconds}ms\");
-//   Console.WriteLine(sample.Sql);
-// }
-//
-// // Get all captured slow queries
-// var queries = test.GetSlowQuerySamples(interceptor);
-// Console.WriteLine($\"Total slow queries: {queries.Count}\");
-//
-// // Get the count of slow queries
-// int count = test.GetSlowQueryCount(interceptor);
-// Console.WriteLine($\"Slow query count: {count}\");
-//
-// // Clear all recorded slow queries
-// foreach (var q in queries)
-// {
-//   Console.WriteLine($\"{q.Duration.TotalMilliseconds}ms {q.Sql}\");
-// }
-// test.ClearSlowQueries(interceptor);
-// ```
-//
-// ## IndexSuggestionAnalyzerTestsExtensions
-//
-// The `IndexSuggestionAnalyzerTestsExtensions` class provides a set of extension methods that invoke the individual test methods of `IndexSuggestionAnalyzerTests`. These helpers make it easy to run a specific test or all tests from regular code without directly referencing the test framework's attributes.
-//
-// ### Usage Example
-//
-// ```csharp
-// using EfCore.SlowQueryLog.Tests;
-//
-// var tests = new IndexSuggestionAnalyzerTests();
-//
-// // Run a single test method
-// tests.RunSuggestsIndexForWhereColumn();
-//
-// // Run all test methods
-// tests.RunAllTests();
-//
-// // Or run a selection of tests individually
-// tests.RunSqlWithoutFiltersYieldsNoSuggestions();
-// tests.RunSuggestsJoinAndOrderColumns();
-// tests.RunParameterMarkersAreNotTreatedAsColumns();
-// tests.RunNumericLiteralsAreNotTreatedAsColumns();
-// tests.RunOrderByOrdinalIsNotTreatedAsColumn();
-// tests.RunToSqlHintBuildsCreateIndexStatement();
-// ```
-//
-// This example demonstrates how to instantiate the test class and invoke its
-// validation logic through the provided extension methods.
-//
-// ## License
-//
-// MIT
+// The example demonstrates how to obtain timing statistics, collect suggestions,
+// and produce both JSON and Markdown representations of the slow‑query ranking.\n\n## License\n\nMIT\n```
