@@ -31,8 +31,8 @@ public sealed class SlowQueryLogOptions
 {
     /// <summary>
     /// Commands whose execution takes at least this long are treated as slow.
-    /// Defaults to 500ms.
     /// </summary>
+    /// <remarks>Default value: 500ms.</remarks>
     public TimeSpan Threshold { get; set; } = TimeSpan.FromMilliseconds(500);
 
     /// <summary>
@@ -40,71 +40,79 @@ public sealed class SlowQueryLogOptions
     /// (e.g. <c>SqlConnection</c>, <c>SqliteConnection</c>). If a provider name is present
     /// in this dictionary its value is used instead of <see cref="Threshold"/>.
     /// </summary>
+    /// <remarks>Default value: an empty dictionary.</remarks>
     public IDictionary<string, TimeSpan> ProviderThresholds { get; set; } = new Dictionary<string, TimeSpan>();
 
     /// <summary>
-    /// Log level used when a slow query is reported. Defaults to <see cref="LogLevel.Warning"/>.
+    /// Log level used when a slow query is reported.
     /// </summary>
+    /// <remarks>Default value: <see cref="LogLevel.Warning"/>.</remarks>
     public LogLevel LogLevel { get; set; } = LogLevel.Warning;
 
     /// <summary>
-    /// When true the parameter values are included in the logged SQL. Off by default to
-    /// avoid leaking sensitive data into logs.
+    /// When true the parameter values are included in the logged SQL.
     /// </summary>
+    /// <remarks>Default value: false.</remarks>
     public bool IncludeParameterValues { get; set; }
 
     /// <summary>
     /// When true the interceptor attempts to produce naive index suggestions by parsing
-    /// the WHERE / JOIN / ORDER BY clauses of the offending SQL. Defaults to true.
+    /// the WHERE / JOIN / ORDER BY clauses of the offending SQL.
     /// </summary>
+    /// <remarks>Default value: true.</remarks>
     public bool SuggestIndexes { get; set; } = true;
 
     /// <summary>
-    /// How many of the slowest queries to retain in the in‑memory ranking. Defaults to 25.
+    /// How many of the slowest queries to retain in the in‑memory ranking.
     /// </summary>
+    /// <remarks>Default value: 25.</remarks>
     public int RankingCapacity { get; set; } = 25;
 
     /// <summary>
     /// Selects which <see cref="Reporting.ISlowQueryRanking"/> implementation
     /// <see cref="Reporting.SlowQueryRankingFactory.Create"/> constructs for these options.
-    /// Defaults to <see cref="SlowQueryRankingMode.Exact"/>.
     /// </summary>
+    /// <remarks>Default value: <see cref="SlowQueryRankingMode.Exact"/>.</remarks>
     public SlowQueryRankingMode RankingMode { get; set; } = SlowQueryRankingMode.Exact;
 
     /// <summary>
     /// Optional sink invoked for every slow query in addition to the logger. Useful for
     /// pushing samples to a dashboard or metrics pipeline.
     /// </summary>
+    /// <remarks>Default value: null.</remarks>
     public Action<SlowQuerySample>? OnSlowQuery { get; set; }
 
     /// <summary>
-    /// When true (default) parameter values are redacted in captured samples. The
+    /// When true parameter values are redacted in captured samples. The
     /// parameter name and type are retained, but the value is replaced with '?'.
     /// When false the original behaviour (full value) is used.
     /// </summary>
+    /// <remarks>Default value: true.</remarks>
     public bool RedactParameters { get; set; } = true;
 
     /// <summary>
     /// Sampling rate for slow queries (0.0 to 1.0). When set to a value less than 1.0,
     /// only a deterministic sample of slow queries will be recorded based on the fingerprint hash.
-    /// This helps bound overhead when many slow queries occur. Defaults to 1.0 (all queries).
+    /// This helps bound overhead when many slow queries occur.
     /// </summary>
+    /// <remarks>Default value: 1.0.</remarks>
     public double SamplingRate { get; set; } = 1.0;
 
     /// <summary>
     /// Maximum number of slow query samples to retain in memory. When this limit is reached,
     /// the oldest samples are evicted using a ring-buffer strategy to prevent unbounded memory growth.
-    /// Defaults to 1000 samples. This is separate from <see cref="RankingCapacity"/> which controls
+    /// This is separate from <see cref="RankingCapacity"/> which controls
     /// the size of the ranked results displayed in reports.
     /// </summary>
+    /// <remarks>Default value: 1000.</remarks>
     public int MaxSamples { get; set; } = 1000;
 
     /// <summary>
     /// Maximum number of index suggestions to analyze per minute using a token-bucket algorithm.
     /// When this limit is reached, additional slow queries will not have index suggestions generated
     /// until the bucket refills. Set to 0 for unlimited analysis (not recommended for production).
-    /// Defaults to 1000 suggestions per minute.
     /// </summary>
+    /// <remarks>Default value: 1000.</remarks>
     public int MaxAnalysesPerMinute { get; set; } = 1000;
 
     /// <summary>
@@ -112,15 +120,15 @@ public sealed class SlowQueryLogOptions
     /// The analysis runs off the hot path on a bounded channel, and samples are dropped
     /// when the channel is full. This prevents the interceptor from becoming a bottleneck
     /// during query execution. When false, analysis runs synchronously on the calling thread.
-    /// Defaults to true.
     /// </summary>
+    /// <remarks>Default value: true.</remarks>
     public bool AnalyzeOnBackgroundThread { get; set; } = true;
 
     /// <summary>
     /// Bounded channel capacity for background analysis queue. When the channel is full,
     /// new samples are dropped. This prevents unbounded memory growth during spikes in slow queries.
-    /// Defaults to 1000 items.
     /// </summary>
+    /// <remarks>Default value: 1000.</remarks>
     public int BackgroundQueueCapacity { get; set; } = 1000;
 
     internal void Validate()
