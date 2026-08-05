@@ -4,8 +4,15 @@ using EfCore.SlowQueryLog.Options;
 
 namespace EfCore.SlowQueryLog.Tests
 {
+    /// <summary>
+    /// Tests for validating <see cref="SlowQueryLogOptions"/> configuration.
+    /// </summary>
     public class SlowQueryLogOptionsValidationTests
     {
+        /// <summary>
+        /// Verifies that a valid <see cref="SlowQueryLogOptions"/> instance passes validation,
+        /// reports no errors, and can be ensured without throwing.
+        /// </summary>
         [Fact]
         public void ValidOptions_PassValidation()
         {
@@ -27,6 +34,11 @@ namespace EfCore.SlowQueryLog.Tests
             Assert.Null(exception);
         }
 
+        /// <summary>
+        /// Ensures that a zero or negative <see cref="SlowQueryLogOptions.Threshold"/> is rejected
+        /// by validation and causes <see cref="SlowQueryLogOptions.EnsureValid"/> to throw an
+        /// <see cref="ArgumentException"/>.
+        /// </summary>
         [Fact]
         public void NegativeOrZeroThreshold_Rejected()
         {
@@ -45,6 +57,11 @@ namespace EfCore.SlowQueryLog.Tests
             Assert.Throws<ArgumentException>(() => options.EnsureValid());
         }
 
+        /// <summary>
+        /// Verifies that a non‑positive <see cref="SlowQueryLogOptions.RankingCapacity"/> is rejected
+        /// by validation and causes <see cref="SlowQueryLogOptions.EnsureValid"/> to throw an
+        /// <see cref="ArgumentException"/>.
+        /// </summary>
         [Fact]
         public void InvalidRankingCapacity_Rejected()
         {
@@ -63,6 +80,10 @@ namespace EfCore.SlowQueryLog.Tests
             Assert.Throws<ArgumentException>(() => options.EnsureValid());
         }
 
+        /// <summary>
+        /// Confirms that the default constructor of <see cref="SlowQueryLogOptions"/> produces a
+        /// configuration that passes validation and can be ensured without throwing.
+        /// </summary>
         [Fact]
         public void DefaultOptions_AreValid()
         {
