@@ -33,6 +33,8 @@ public sealed record IndexSuggestion(string Table, IReadOnlyList<string> Columns
 {
     public string ToSqlHint()
     {
+        ArgumentException.ThrowIfNullOrEmpty(nameof(Table));
+        ArgumentNullException.ThrowIfNull(nameof(Columns));
         var cols = string.Join(", ", Columns);
         var name = $"IX_{Table}_{string.Join("_", Columns)}".Replace(".", "_");
         if (IncludeColumns != null && IncludeColumns.Count > 0)
