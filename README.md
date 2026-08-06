@@ -127,3 +127,34 @@ class Program
     }
 }
 ```
+
+## SlowQuerySampleJsonTests
+
+`SlowQuerySampleJsonTests` contains a comprehensive suite of unit tests that verify the JSON serialization and deserialization behavior of `SlowQuerySample`. The tests cover formatting options, handling of `null` parameters, empty suggestion collections, special characters, whitespace handling, and error conditions, ensuring round‑trip fidelity and robust error reporting.
+
+```csharp
+using EfCore.SlowQueryLog;
+using EfCore.SlowQueryLog.Analysis;
+using EfCore.SlowQueryLog.Tests; // Adjust namespace if necessary
+
+class JsonTestDemo
+{
+    static void Main()
+    {
+        // Instantiate the test class
+        var jsonTests = new SlowQuerySampleJsonTests();
+
+        // Run a few representative test methods manually
+        jsonTests.ToJson_SerializesAllFieldsCorrectly();
+        jsonTests.ToJson_WithIndentedFormat_ProducesFormattedJson();
+        jsonTests.FromJson_RoundtripPreservesAllFields();
+        jsonTests.FromJson_WithNullParameters_DeserializesCorrectly();
+        jsonTests.TryFromJson_ValidJson_ReturnsTrueAndDeserializes();
+
+        // The above calls exercise the public members of the test class.
+        // In a real test run, a test runner (e.g., xUnit, NUnit) would invoke all methods automatically.
+    }
+}
+```
+
+The example demonstrates how the test class can be instantiated and its public test methods invoked directly, which in turn validate the JSON handling logic of `SlowQuerySample`.
