@@ -70,3 +70,60 @@ class Program
     }
 }
 ```
+
+## SlowQueryRanking
+
+The `SlowQueryRanking` class maintains a thread‑safe collection of individual slow‑query samples. It allows adding samples, retrieving a snapshot of all recorded samples, clearing the collection, and obtaining aggregated fingerprints grouped by SQL.
+
+```csharp
+using System;
+using System.Collections.Generic;
+using EfCore.SlowQueryLog.Analysis;
+using EfCore.SlowQueryLog.Reporting;
+
+class Program
+{
+    static void Main()
+    {
+        // Create a ranking that keeps up to 100 samples
+        var ranking = new SlowQueryRanking(capacity: 100);
+
+        // Add a single sample
+        ranking.Add(new SlowQuerySample
+        {
+            Sql = "SELECT * FROM Users WHERE Id = @id",
+            Parameters = "@id=1",
+            Duration = TimeSpan.FromMilliseconds(150),
+            Suggestions = Array.Empty<IndexSuggestion>()
+        });
+
+        // Add multiple samples
+        var samples = new List<SlowQuerySample>
+        {
+            new SlowQuerySample
+            {
+                Sql = "SELECT * FROM Orders",
+                Duration = TimeSpan.FromMilliseconds(300),
+                Suggestions = Array.Empty<IndexSuggestion>()
+            },
+            new SlowQuerySample
+            {
+                Sql = "SELECT * FROM Users WHERE Id = @id",
+                Duration = TimeSpan.FromMilliseconds(200),
+                Suggestions = Array.Empty<IndexSuggestion>()
+            }
+        };
+        foreach (var s in samples)
+            ranking.Add(s);
+
+        // Get a snapshot of all samples added so far
+        IReadOnlyList<SlowQuerySample> snapshot = ranking.Snapshot();
+
+        // Retrieve aggregated fingerprints (grouped by SQL)
+        IReadOnlyList<SlowQueryFingerprint> fingerprints = ranking.GetFingerprints();
+
+        // When done, clear the ranking
+        ranking.Clear();
+    }
+}
+```
