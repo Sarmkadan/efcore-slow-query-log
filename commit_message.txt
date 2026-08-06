@@ -1,0 +1,1 @@
+Added null guards to public methods in SlowQueryFingerprintRanking.cs

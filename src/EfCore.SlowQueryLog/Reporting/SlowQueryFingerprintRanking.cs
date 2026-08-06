@@ -81,6 +81,8 @@ public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
 
     public void AddRange(IEnumerable<SlowQuerySample> samples)
     {
+        ArgumentNullException.ThrowIfNull(samples);
+
         lock (_gate)
         {
             foreach (var sample in samples)
@@ -248,6 +250,9 @@ public sealed class SlowQueryFingerprint
 
     public SlowQueryFingerprint(string sql, string? parameters, IReadOnlyList<IndexSuggestion> suggestions)
     {
+        ArgumentException.ThrowIfNullOrEmpty(sql);
+        ArgumentNullException.ThrowIfNull(suggestions);
+
         Sql = sql;
         Parameters = parameters;
         Suggestions = suggestions;
