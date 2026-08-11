@@ -131,6 +131,12 @@ public sealed class SlowQueryLogOptions
     /// <remarks>Default value: 1000.</remarks>
     public int BackgroundQueueCapacity { get; set; } = 1000;
 
+    /// <summary>
+    /// Returns a concise, informative string representation of the current options.
+    /// </summary>
+    /// <returns>A string representation of the options.</returns>
+    public override string ToString() => $"SlowQueryLogOptions {{ Threshold = {Threshold}, ProviderThresholds = {ProviderThresholds}, LogLevel = {LogLevel}, IncludeParameterValues = {IncludeParameterValues}, SuggestIndexes = {SuggestIndexes}, RankingCapacity = {RankingCapacity} }}";
+
     internal void Validate()
     {
         if (Threshold <= TimeSpan.Zero)
