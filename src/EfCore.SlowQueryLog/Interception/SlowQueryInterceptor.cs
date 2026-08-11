@@ -50,6 +50,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData, DbDataReader result)
     {
+        _logger.LogInformation("ReaderExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return CaptureAndProceed(
             command,
             eventData.Duration,
@@ -59,6 +60,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     public override async ValueTask<DbDataReader> ReaderExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("ReaderExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return await CaptureAndProceedAsync(
             command,
             eventData.Duration,
@@ -67,6 +69,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override int NonQueryExecuted(DbCommand command, CommandExecutedEventData eventData, int result)
     {
+        _logger.LogInformation("NonQueryExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return CaptureAndProceed(
             command,
             eventData.Duration,
@@ -76,6 +79,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     public override async ValueTask<int> NonQueryExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("NonQueryExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return await CaptureAndProceedAsync(
             command,
             eventData.Duration,
@@ -84,6 +88,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override object? ScalarExecuted(DbCommand command, CommandExecutedEventData eventData, object? result)
     {
+        _logger.LogInformation("ScalarExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return CaptureAndProceed(
             command,
             eventData.Duration,
@@ -93,6 +98,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     public override async ValueTask<object?> ScalarExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, object? result, CancellationToken cancellationToken = default)
     {
+        _logger.LogInformation("ScalarExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return await CaptureAndProceedAsync(
             command,
             eventData.Duration,
@@ -101,6 +107,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override void CommandFailed(DbCommand command, CommandErrorEventData eventData)
     {
+        _logger.LogError(eventData.Exception, "Failed to {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         CaptureAndProceed(
             command,
             eventData.Duration,
@@ -109,6 +116,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override async Task CommandFailedAsync(DbCommand command, CommandErrorEventData eventData, CancellationToken cancellationToken = default)
     {
+        _logger.LogError(eventData.Exception, "Failed to {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         await CaptureAndProceedAsync(
             command,
             eventData.Duration,
