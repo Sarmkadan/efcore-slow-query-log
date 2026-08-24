@@ -267,6 +267,8 @@ public sealed class SlowQueryFingerprint
         Percentile99 = TimeSpan.Zero;
     }
 
+    public override string ToString() => $"SlowQueryFingerprint {{ Sql = {Sql}, Parameters = {Parameters}, Suggestions = {Suggestions}, SampleCount = {SampleCount}, AverageDuration = {AverageDuration}, MaxDuration = {MaxDuration} }}";
+
     public void AddSample(SlowQuerySample sample)
     {
         SampleCount++;
