@@ -187,3 +187,35 @@ class ValidationTestDemo
     }
 }
 ```
+
+## SlowQueryFingerprintRankingTests
+
+`SlowQueryFingerprintRankingTests` contains unit tests that verify the behavior of `SlowQueryFingerprintRanking`, which maintains a thread-safe, bounded ranking of slow-query fingerprints grouped by SQL text. The tests confirm that constructing a ranking with a zero capacity throws an `ArgumentOutOfRangeException`, that samples added individually or via `AddRange` are grouped by SQL with correctly aggregated statistics (while null samples or collections are rejected), that the configured capacity keeps only the top-ranked fingerprints, and that `Clear` removes all fingerprints while the `Metric` property reports the metric the ranking was created with.
+
+```csharp
+using EfCore.SlowQueryLog.Tests; // Adjust namespace if necessary
+
+class FingerprintRankingTestDemo
+{
+    static void Main()
+    {
+        // Instantiate the test class
+        var rankingTests = new SlowQueryFingerprintRankingTests();
+
+        // Run a few representative test methods manually
+        rankingTests.Constructor_ZeroCapacity_ThrowsArgumentOutOfRangeException();
+        rankingTests.Add_SingleSample_CreatesFingerprintWithCorrectStatistics();
+        rankingTests.Add_MultipleSamples_GroupedBySql_AggregatesStatistics();
+        rankingTests.Add_DifferentSql_CreatesSeparateFingerprints();
+        rankingTests.AddRange_EmptyCollection_NoEffect();
+        rankingTests.AddRange_NullCollection_ThrowsArgumentNullException();
+        rankingTests.Capacity_IsRespected_OnlyTopRankedKept();
+        rankingTests.Clear_RemovesAllFingerprints();
+        rankingTests.MetricProperty_ReturnsConfiguredMetric();
+        rankingTests.Add_NullSample_ThrowsArgumentNullException();
+
+        // The above calls exercise the public members of the test class.
+        // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
+    }
+}
+```
