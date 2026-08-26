@@ -139,6 +139,9 @@ namespace EfCore.SlowQueryLog.Tests
             public DateTimeOffset GeneratedAt { get; set; }
             public IReadOnlyList<SlowQuerySample> Samples { get; set; } = Array.Empty<SlowQuerySample>();
             public IReadOnlyList<SlowQueryFingerprint> Fingerprints { get; set; } = Array.Empty<SlowQueryFingerprint>();
+
+            public override string ToString() =>
+                $"ReportDto {{ GeneratedAt = {GeneratedAt}, Samples = {Samples}, Fingerprints = {Fingerprints} }}";
         }
     }
 }
