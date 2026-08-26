@@ -158,3 +158,32 @@ class JsonTestDemo
 ```
 
 The example demonstrates how the test class can be instantiated and its public test methods invoked directly, which in turn validate the JSON handling logic of `SlowQuerySample`.
+```
+
+## SlowQueryInterceptorValidationTests
+
+`SlowQueryInterceptorValidationTests` contains unit tests that verify the behavior of the legacy `SlowQueryInterceptorValidation` helper used to inspect `SlowQueryInterceptor` instances. The tests confirm that validating a properly constructed interceptor produces an empty, non-null, read-only collection of issues, that `IsValid` returns `true` for valid interceptors (including right after construction) and `false` for `null`, and that `EnsureValid` completes without throwing for valid instances while raising an `ArgumentNullException` when passed `null`.
+
+```csharp
+using EfCore.SlowQueryLog.Tests; // Adjust namespace if necessary
+
+class ValidationTestDemo
+{
+    static void Main()
+    {
+        // Instantiate the test class
+        var validationTests = new SlowQueryInterceptorValidationTests();
+
+        // Run a few representative test methods manually
+        validationTests.Validate_WithValidInterceptor_ReturnsEmptyList();
+        validationTests.Validate_WithNullInterceptor_ThrowsArgumentNullException();
+        validationTests.IsValid_WithValidInterceptor_ReturnsTrue();
+        validationTests.IsValid_WithNullInterceptor_ReturnsFalse();
+        validationTests.EnsureValid_WithValidInterceptor_DoesNotThrow();
+        validationTests.EnsureValid_WithNullInterceptor_ThrowsArgumentNullException();
+
+        // The above calls exercise the public members of the test class.
+        // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
+    }
+}
+```
