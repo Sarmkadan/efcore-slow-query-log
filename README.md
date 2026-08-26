@@ -219,3 +219,33 @@ class FingerprintRankingTestDemo
     }
 }
 ```
+
+## SlowQueryInterceptorExtensionsTests
+
+`SlowQueryInterceptorExtensionsTests` contains a comprehensive suite of unit tests that verify the behavior of the `SlowQueryInterceptor` extension methods. The tests confirm that capturing queries correctly updates the ranking, that querying captured data returns accurate counts and ordered results, and that edge cases like empty states or null interceptors are handled appropriately.
+
+```csharp
+using EfCore.SlowQueryLog.Tests; // Adjust namespace if necessary
+
+class InterceptorExtensionsTestDemo
+{
+    static void Main()
+    {
+        // Instantiate the test class
+        var extensionsTests = new SlowQueryInterceptorExtensionsTests();
+
+        // Run a few representative test methods manually
+        extensionsTests.Capture_adds_query_to_ranking();
+        extensionsTests.Capture_returns_null_when_below_threshold();
+        extensionsTests.GetCapturedQueries_returns_queries_ordered_by_duration();
+        extensionsTests.GetSlowestQuery_returns_slowest_query();
+        extensionsTests.GetFastestQuery_returns_fastest_query();
+        extensionsTests.GetQueryCount_returns_correct_count();
+        extensionsTests.HasCapturedQueries_returns_true_when_has_queries();
+        extensionsTests.Clear_removes_all_captured_queries();
+
+        // The above calls exercise the public members of the test class.
+        // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
+    }
+}
+```
