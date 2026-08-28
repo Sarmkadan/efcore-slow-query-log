@@ -158,7 +158,6 @@ class JsonTestDemo
 ```
 
 The example demonstrates how the test class can be instantiated and its public test methods invoked directly, which in turn validate the JSON handling logic of `SlowQuerySample`.
-```
 
 ## SlowQueryInterceptorValidationTests
 
@@ -335,6 +334,35 @@ class ServiceCollectionExtensionsTestDemo
         tests.AddSlowQueryLog_WithNullServices_ThrowsArgumentNullException();
         tests.AddSlowQueryLog_WithInterceptor_RegistersProvidedInstance();
         tests.AddSlowQueryLog_WithNullInterceptor_ThrowsArgumentNullException();
+
+        // The above calls exercise the public members of the test class.
+        // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
+    }
+}
+```
+
+## SlowQueryInterceptorJsonExtensionsTests
+
+`SlowQueryInterceptorJsonExtensionsTests` contains unit tests that verify the JSON serialization and deserialization behavior of the `SlowQueryInterceptor` extension methods. The tests cover converting to JSON, parsing from JSON, and handling of null and empty inputs.
+
+```csharp
+using EfCore.SlowQueryLog.Tests; // Adjust namespace if necessary
+
+class InterceptorJsonExtensionsTestDemo
+{
+    static void Main()
+    {
+        // Instantiate the test class
+        var jsonTests = new SlowQueryInterceptorJsonExtensionsTests();
+
+        // Run a few representative test methods manually
+        jsonTests.ToJson_Returns_NonEmpty_String();
+        jsonTests.FromJson_With_Valid_Json_Returns_Null();
+        jsonTests.FromJson_With_Null_Argument_Throws_ArgumentNullException();
+        jsonTests.FromJson_With_Empty_String_Throws_ArgumentException();
+        jsonTests.TryFromJson_With_Valid_Json_Returns_False_And_Null();
+        jsonTests.TryFromJson_With_Null_Argument_Throws_ArgumentNullException();
+        jsonTests.TryFromJson_With_Empty_String_Throws_ArgumentException();
 
         // The above calls exercise the public members of the test class.
         // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
