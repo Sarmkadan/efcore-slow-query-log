@@ -248,94 +248,29 @@ class InterceptorExtensionsTestDemo
         // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
     }
 }
-
-
-
-## SlowQueryReportWriterTests
-
-`SlowQueryReportWriterTests` contains unit tests that verify the behavior of the `SlowQueryReportWriter` class, which writes slow query reports to JSON files. The tests confirm that passing null file path or ranking throws `ArgumentNullException`, that an empty ranking writes empty collections, that the happy path writes correct data, and that indented formatting produces multi-line JSON.
-
-```csharp
-using System;
-using System.Collections.Generic;
-using EfCore.SlowQueryLog.Analysis;
-using EfCore.SlowQueryLog.Reporting;
-
-class ReportWriterTestDemo
-{
-    static void Main()
-    {
-        // Instantiate the test class
-        var writerTests = new SlowQueryReportWriterTests();
-
-        // Run a few representative test methods manually
-        writerTests.WriteReport_NullFilePath_ThrowsArgumentNullException();
-        writerTests.WriteReport_NullRanking_ThrowsArgumentNullException();
-        writerTests.WriteReport_EmptyRanking_WritesEmptyCollections();
-        writerTests.WriteReport_HappyPath_WritesCorrectData();
-        writerTests.WriteReport_Indented_ProducesMultilineJson();
-
-        // The above calls exercise the public members of the test class.
-        // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
-    }
-}
 ```
 
 
-## SlowQueryReportWriterTests
+## SlowQueryLogServiceCollectionExtensionsTests
 
-`SlowQueryReportWriterTests` contains unit tests that verify the behavior of the `SlowQueryReportWriter` class, which writes slow query reports to JSON files. The tests confirm that passing null file path or ranking throws `ArgumentNullException`, that an empty ranking writes empty collections, that the happy path writes correct data, and that indented formatting produces multi-line JSON.
+`SlowQueryLogServiceCollectionExtensionsTests` contains unit tests that verify the behavior of the `AddSlowQueryLog` extension methods for `IServiceCollection`. The tests cover registering the interceptor with no arguments, with a configuration action, with a provided interceptor instance, and proper argument null checking.
 
 ```csharp
-using System;
-using System.Collections.Generic;
-using EfCore.SlowQueryLog.Analysis;
-using EfCore.SlowQueryLog.Reporting;
+using EfCore.SlowQueryLog.Tests; // Adjust namespace if necessary
 
-class ReportWriterTestDemo
+class ServiceCollectionExtensionsTestDemo
 {
     static void Main()
     {
         // Instantiate the test class
-        var writerTests = new SlowQueryReportWriterTests();
+        var tests = new SlowQueryLogServiceCollectionExtensionsTests();
 
         // Run a few representative test methods manually
-        writerTests.WriteReport_NullFilePath_ThrowsArgumentNullException();
-        writerTests.WriteReport_NullRanking_ThrowsArgumentNullException();
-        writerTests.WriteReport_EmptyRanking_WritesEmptyCollections();
-        writerTests.WriteReport_HappyPath_WritesCorrectData();
-        writerTests.WriteReport_Indented_ProducesMultilineJson();
-
-        // The above calls exercise the public members of the test class.
-        // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
-    }
-}
-```
-
-
-## SlowQueryReportWriterTests
-
-`SlowQueryReportWriterTests` contains unit tests that verify the behavior of the `SlowQueryReportWriter` class, which writes slow query reports to JSON files. The tests confirm that passing null file path or ranking throws `ArgumentNullException`, that an empty ranking writes empty collections, that the happy path writes correct data, and that indented formatting produces multi-line JSON.
-
-```csharp
-using System;
-using System.Collections.Generic;
-using EfCore.SlowQueryLog.Analysis;
-using EfCore.SlowQueryLog.Reporting;
-
-class ReportWriterTestDemo
-{
-    static void Main()
-    {
-        // Instantiate the test class
-        var writerTests = new SlowQueryReportWriterTests();
-
-        // Run a few representative test methods manually
-        writerTests.WriteReport_NullFilePath_ThrowsArgumentNullException();
-        writerTests.WriteReport_NullRanking_ThrowsArgumentNullException();
-        writerTests.WriteReport_EmptyRanking_WritesEmptyCollections();
-        writerTests.WriteReport_HappyPath_WritesCorrectData();
-        writerTests.WriteReport_Indented_ProducesMultilineJson();
+        tests.AddSlowQueryLog_NoArgs_RegistersInterceptor();
+        tests.AddSlowQueryLog_WithConfigure_RegistersInterceptorAndInvokesConfigure();
+        tests.AddSlowQueryLog_WithNullServices_ThrowsArgumentNullException();
+        tests.AddSlowQueryLog_WithInterceptor_RegistersProvidedInstance();
+        tests.AddSlowQueryLog_WithNullInterceptor_ThrowsArgumentNullException();
 
         // The above calls exercise the public members of the test class.
         // In a real test run, a test runner (e.g., xUnit) would invoke all methods automatically.
