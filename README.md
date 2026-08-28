@@ -220,6 +220,70 @@ class FingerprintRankingTestDemo
 }
 ```
 
+## SlowQueryRankingTests
+
+The `SlowQueryRankingTests` class contains unit tests that verify the behavior of `SlowQueryRanking`, which maintains a thread-safe, bounded collection of slow-query samples ordered by duration. The tests confirm that samples are ordered by duration descending, capacity limits are respected keeping only the slowest samples, percentiles are computed correctly, fingerprints are grouped by SQL with proper statistics, and the class is thread-safe for concurrent access.
+
+```csharp
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using EfCore.SlowQueryLog;
+using EfCore.SlowQueryLog.Reporting;
+
+class SlowQueryRankingTestDemo
+{
+    static void Main()
+    {
+        // Create a ranking that keeps up to 5 samples
+        var ranking = new SlowQueryRanking(capacity: 5);
+
+        // Add samples with different durations
+        ranking.Add(new SlowQuerySample
+        {
+            Sql = "SELECT * FROM Products",
+            Duration = TimeSpan.FromMilliseconds(100),
+            CapturedAt = DateTimeOffset.UtcNow
+        });
+
+        ranking.Add(new SlowQuerySample
+        {
+            Sql = "SELECT * FROM Orders WHERE CustomerId = @id",
+            Duration = TimeSpan.FromMilliseconds(500),
+            CapturedAt = DateTimeOffset.UtcNow
+        });
+
+        ranking.Add(new SlowQuerySample
+        {
+            Sql = "SELECT * FROM Users",
+            Duration = TimeSpan.FromMilliseconds(300),
+            CapturedAt = DateTimeOffset.UtcNow
+        });
+
+        // Get a snapshot of all samples (ordered by duration descending)
+        IReadOnlyList<SlowQuerySample> snapshot = ranking.Snapshot();
+        
+        // Should be ordered: 500ms, 300ms, 100ms
+        Console.WriteLine($"Top query: {snapshot[0].Sql} ({snapshot[0].Duration.TotalMilliseconds}ms)");
+        Console.WriteLine($"Second query: {snapshot[1].Sql} ({snapshot[1].Duration.TotalMilliseconds}ms)");
+        Console.WriteLine($"Third query: {snapshot[2].Sql} ({snapshot[2].Duration.TotalMilliseconds}ms)");
+
+        // Get fingerprints grouped by SQL
+        IReadOnlyList<SlowQueryFingerprint> fingerprints = ranking.GetFingerprints();
+        foreach (var fp in fingerprints)
+        {
+            Console.WriteLine($"SQL: {fp.Sql}");
+            Console.WriteLine($"Sample count: {fp.SampleCount}");
+            Console.WriteLine($"Average duration: {fp.AverageDuration.TotalMilliseconds}ms");
+        }
+
+        // When done, clear the ranking
+        ranking.Clear();
+    }
+}
+```
+
 ## SlowQueryInterceptorExtensionsTests
 
 `SlowQueryInterceptorExtensionsTests` contains a comprehensive suite of unit tests that verify the behavior of the `SlowQueryInterceptor` extension methods. The tests confirm that capturing queries correctly updates the ranking, that querying captured data returns accurate counts and ordered results, and that edge cases like empty states or null interceptors are handled appropriately.
