@@ -10,6 +10,24 @@ namespace EfCore.SlowQueryLog.Reporting;
 /// </summary>
 public static class SqlSanitizer
 {
+    // Parameter values longer than this are truncated to limit report size.
+    private const int MaxParameterValueLength = 1000;
+
+    // Number of characters retained when truncating a long parameter value.
+    private const int TruncatedValueLength = 500;
+
+    // Marker appended to parameter values that have been truncated.
+    private const string TruncationSuffix = "... [truncated]";
+
+    // Marker appended to SQL text that exceeds its configured maximum length.
+    private const string Ellipsis = "...";
+
+    // Replacement used when a parameter value contains sensitive information.
+    private const string RedactedPlaceholder = "?";
+
+    // Delimiter used between formatted parameter entries.
+    private const string ParameterSeparator = ", ";
+
     // Common sensitive keywords that should be redacted from parameter values
     private static readonly HashSet<string> _sensitiveKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -96,7 +114,7 @@ public static class SqlSanitizer
 
         if (maxLength > 0 && sanitized.Length > maxLength)
         {
-            sanitized = sanitized.Substring(0, maxLength - 3) + "...";
+            sanitized = sanitized.Substring(0, maxLength - Ellipsis.Length) + Ellipsis;
         }
 
         return sanitized;
@@ -122,7 +140,7 @@ public static class SqlSanitizer
             {
                 if (parameterName.Contains(keyword, StringComparison.OrdinalIgnoreCase))
                 {
-                    return "?";
+                    return RedactedPlaceholder;
                 }
             }
         }
@@ -133,14 +151,14 @@ public static class SqlSanitizer
         {
             if (lowerValue.Contains(keyword))
             {
-                return "?";
+                return RedactedPlaceholder;
             }
         }
 
         // For long values, redact to prevent log explosion
-        if (parameterValue.Length > 1000)
+        if (parameterValue.Length > MaxParameterValueLength)
         {
-            return parameterValue.Substring(0, 500) + "... [truncated]";
+            return parameterValue.Substring(0, TruncatedValueLength) + TruncationSuffix;
         }
 
         return parameterValue;
@@ -161,7 +179,7 @@ public static class SqlSanitizer
         }
 
         // Split by comma to handle individual parameters
-        var parts = formattedParameters.Split(new[] { ", " }, StringSplitOptions.None);
+        var parts = formattedParameters.Split(new[] { ParameterSeparator }, StringSplitOptions.None);
         var sanitizedParts = new List<string>(parts.Length);
 
         foreach (var part in parts)
@@ -188,7 +206,7 @@ public static class SqlSanitizer
             }
         }
 
-        return string.Join(", ", sanitizedParts);
+        return string.Join(ParameterSeparator, sanitizedParts);
     }
 
     /// <summary>
