@@ -24,6 +24,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     private readonly IndexSuggestionBackgroundAnalyzer? _backgroundAnalyzer;
     private readonly object _samplingGate = new();
     private readonly ConcurrentDictionary<string, int> _samplingCounters = new(StringComparer.Ordinal);
+    private readonly List<string> _excludedSqlFragments = new() { "__EFMigrationsHistory" };
 
     public SlowQueryInterceptor(
         SlowQueryLogOptions options,
@@ -47,6 +48,34 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     /// <summary>The live ranking of slow queries, exposed for reporting / dashboards.</summary>
     public SlowQueryRanking Ranking { get; }
+
+    /// <summary>Gets the SQL fragments that are excluded from slow-query capture.</summary>
+    public IReadOnlyList<string> ExcludedSqlFragments => _excludedSqlFragments;
+
+    /// <summary>
+    /// Excludes commands containing any of the supplied SQL fragments, using a case-insensitive comparison.
+    /// </summary>
+    /// <param name="fragments">The SQL fragments to exclude. Null and empty entries are ignored.</param>
+    /// <returns>This interceptor, enabling fluent configuration.</returns>
+    /// <example>
+    /// <code>
+    /// var interceptor = new SlowQueryInterceptor(options)
+    ///     .ExcludeSqlContaining("SELECT 1", "HealthCheck");
+    /// </code>
+    /// </example>
+    /// <exception cref="ArgumentNullException"><paramref name="fragments"/> is <see langword="null"/>.</exception>
+    public SlowQueryInterceptor ExcludeSqlContaining(params string[] fragments)
+    {
+        ArgumentNullException.ThrowIfNull(fragments);
+
+        foreach (var fragment in fragments)
+        {
+            if (!string.IsNullOrEmpty(fragment))
+                _excludedSqlFragments.Add(fragment);
+        }
+
+        return this;
+    }
 
     public override DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData, DbDataReader result)
     {
@@ -135,6 +164,9 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         ArgumentOutOfRangeException.ThrowIfLessThan(duration, TimeSpan.Zero);
 
         var commandText = command.CommandText ?? string.Empty;
+
+        if (_excludedSqlFragments.Any(fragment => commandText.Contains(fragment, StringComparison.OrdinalIgnoreCase)))
+            return null;
 
         // Determine the effective threshold, taking per‑provider overrides into account.
         var effectiveThreshold = GetEffectiveThreshold(command);
