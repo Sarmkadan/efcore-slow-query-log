@@ -127,8 +127,15 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     /// Core capture path. Public so it can be exercised directly from tests without a
     /// live database connection.
     /// </summary>
+    /// <exception cref="ArgumentNullException"><paramref name="command"/> is <see langword="null"/>.</exception>
+    /// <exception cref="ArgumentOutOfRangeException"><paramref name="duration"/> is negative.</exception>
     public SlowQuerySample? Capture(DbCommand command, TimeSpan duration)
     {
+        ArgumentNullException.ThrowIfNull(command);
+        ArgumentOutOfRangeException.ThrowIfLessThan(duration, TimeSpan.Zero);
+
+        var commandText = command.CommandText ?? string.Empty;
+
         // Determine the effective threshold, taking per‑provider overrides into account.
         var effectiveThreshold = GetEffectiveThreshold(command);
 
@@ -138,7 +145,7 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         // Apply sampling if configured
         if (!ShouldSample(command))
         {
-            _logger.LogDebug("Slow query sampling skipped for: {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+            _logger.LogDebug("Slow query sampling skipped for: {CommandText}", commandText.Substring(0, Math.Min(100, commandText.Length)));
             return null;
         }
 
@@ -151,19 +158,19 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
                 // Queue for background analysis - suggestions will be empty initially
                 // In a real implementation, we'd need to store the analysis result
                 // For now, we queue the SQL and the background analyzer does the work
-                _backgroundAnalyzer.TryQueue(command.CommandText);
+                _backgroundAnalyzer.TryQueue(commandText);
             }
             else
             {
                 // Synchronous analysis (original behavior)
-                suggestions = _syncAnalyzer.Analyze(command.CommandText);
+                suggestions = _syncAnalyzer.Analyze(commandText);
             }
         }
 
         // Create sample with suggestions
         var sample = new SlowQuerySample
         {
-            Sql = command.CommandText,
+            Sql = commandText,
             Duration = duration,
             CapturedAt = DateTimeOffset.UtcNow,
             Parameters = _options.IncludeParameterValues ? FormatParameters(command, _options.RedactParameters) : null,
