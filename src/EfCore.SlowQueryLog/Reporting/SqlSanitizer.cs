@@ -28,7 +28,7 @@ public static class SqlSanitizer
     // Delimiter used between formatted parameter entries.
     private const string ParameterSeparator = ", ";
 
-    // Common sensitive keywords that should be redacted from parameter values
+    // Common sensitive keywords that should trigger redaction based on parameter names.
     private static readonly HashSet<string> _sensitiveKeywords = new(StringComparer.OrdinalIgnoreCase)
     {
         "password",
@@ -52,8 +52,18 @@ public static class SqlSanitizer
         "username"
     };
 
-    // Markdown special characters that need escaping
-    private static readonly char[] _markdownSpecialChars = new[] { '\\', '`', '*', '_', '{', '}', '[', ']', '(', ')', '#', '+', '-', '.', '!', '|' };
+    // Sensitive keywords that should trigger redaction when found in parameter values.
+    private static readonly HashSet<string> _sensitiveValueKeywords = new(StringComparer.OrdinalIgnoreCase)
+    {
+        "password",
+        "pwd",
+        "secret",
+        "token",
+        "bearer",
+        "credential",
+        "ssn",
+        "creditcard"
+    };
 
     /// <summary>
     /// Escapes Markdown special characters in SQL text to prevent Markdown injection.
@@ -103,21 +113,21 @@ public static class SqlSanitizer
     /// Sanitizes SQL text for safe output in reports.
     /// </summary>
     /// <param name="sql">The SQL text to sanitize.</param>
-    /// <param name="maxLength">Maximum length of the sanitized output (0 for no limit).</param>
+    /// <param name="maxLength">Maximum length of the SQL text before Markdown escaping (0 for no limit).</param>
     /// <returns>The sanitized SQL text.</returns>
     /// <exception cref="ArgumentNullException">Thrown if sql is null.</exception>
     public static string SanitizeSql(string sql, int maxLength = 0)
     {
         ArgumentNullException.ThrowIfNull(sql);
 
-        var sanitized = EscapeMarkdown(sql);
-
-        if (maxLength > 0 && sanitized.Length > maxLength)
+        if (maxLength > 0 && sql.Length > maxLength)
         {
-            sanitized = sanitized.Substring(0, maxLength - Ellipsis.Length) + Ellipsis;
+            sql = maxLength <= Ellipsis.Length
+                ? sql.Substring(0, maxLength)
+                : sql.Substring(0, maxLength - Ellipsis.Length) + Ellipsis;
         }
 
-        return sanitized;
+        return EscapeMarkdown(sql);
     }
 
     /// <summary>
@@ -146,10 +156,9 @@ public static class SqlSanitizer
         }
 
         // Check if value contains sensitive patterns
-        var lowerValue = parameterValue.ToLowerInvariant();
-        foreach (var keyword in _sensitiveKeywords)
+        foreach (var keyword in _sensitiveValueKeywords)
         {
-            if (lowerValue.Contains(keyword))
+            if (parameterValue.Contains(keyword, StringComparison.OrdinalIgnoreCase))
             {
                 return RedactedPlaceholder;
             }
