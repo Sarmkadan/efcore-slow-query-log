@@ -306,23 +306,21 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         if (!_logger.IsEnabled(_options.LogLevel))
             return;
 
-        var sb = new StringBuilder();
-        sb.Append("Slow query detected: ")
-            .Append(sample.Duration.TotalMilliseconds.ToString("F1"))
-            .AppendLine("ms");
-        sb.AppendLine(sample.Sql.Trim());
-
-        if (sample.Parameters is not null)
-            sb.Append("Parameters: ").AppendLine(sample.Parameters);
+        _logger.Log(
+            _options.LogLevel,
+            "Slow query detected: {DurationMs}ms SQL: {Sql} Parameters: {Parameters} Suggestions: {SuggestionCount}",
+            Math.Round(sample.Duration.TotalMilliseconds, 1),
+            sample.Sql.Trim(),
+            sample.Parameters ?? "(none)",
+            sample.Suggestions.Count);
 
         if (sample.Suggestions.Count > 0)
         {
-            sb.AppendLine("Index suggestions:");
-            foreach (var s in sample.Suggestions)
-                sb.Append(" ").AppendLine(s.ToSqlHint());
+            _logger.Log(
+                _options.LogLevel,
+                "Slow query index suggestions: {Suggestions}",
+                string.Join(Environment.NewLine, sample.Suggestions.Select(suggestion => suggestion.ToSqlHint())));
         }
-
-        _logger.Log(_options.LogLevel, "{SlowQueryReport}", sb.ToString());
     }
 
     private static string FormatParameters(DbCommand command, bool redact)
