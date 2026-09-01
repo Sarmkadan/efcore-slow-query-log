@@ -2,7 +2,6 @@ using System;
 using System.Buffers;
 using System.Collections.Concurrent;
 using System.Data.Common;
-using System.Security.Cryptography;
 using System.Text;
 using EfCore.SlowQueryLog.Analysis;
 using EfCore.SlowQueryLog.Options;
@@ -22,7 +21,6 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     private readonly ILogger<SlowQueryInterceptor> _logger;
     private readonly IndexSuggestionAnalyzer _syncAnalyzer;
     private readonly IndexSuggestionBackgroundAnalyzer? _backgroundAnalyzer;
-    private readonly object _samplingGate = new();
     private readonly ConcurrentDictionary<string, int> _samplingCounters = new(StringComparer.Ordinal);
     private readonly List<string> _excludedSqlFragments = new() { "__EFMigrationsHistory" };
 
@@ -79,7 +77,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override DbDataReader ReaderExecuted(DbCommand command, CommandExecutedEventData eventData, DbDataReader result)
     {
-        _logger.LogInformation("ReaderExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("ReaderExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return CaptureAndProceed(
             command,
             eventData.Duration,
@@ -89,7 +88,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     public override async ValueTask<DbDataReader> ReaderExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, DbDataReader result, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("ReaderExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("ReaderExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return await CaptureAndProceedAsync(
             command,
             eventData.Duration,
@@ -98,7 +98,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override int NonQueryExecuted(DbCommand command, CommandExecutedEventData eventData, int result)
     {
-        _logger.LogInformation("NonQueryExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("NonQueryExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return CaptureAndProceed(
             command,
             eventData.Duration,
@@ -108,7 +109,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     public override async ValueTask<int> NonQueryExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, int result, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("NonQueryExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("NonQueryExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return await CaptureAndProceedAsync(
             command,
             eventData.Duration,
@@ -117,7 +119,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     public override object? ScalarExecuted(DbCommand command, CommandExecutedEventData eventData, object? result)
     {
-        _logger.LogInformation("ScalarExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("ScalarExecuted called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return CaptureAndProceed(
             command,
             eventData.Duration,
@@ -127,7 +130,8 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
     public override async ValueTask<object?> ScalarExecutedAsync(
         DbCommand command, CommandExecutedEventData eventData, object? result, CancellationToken cancellationToken = default)
     {
-        _logger.LogInformation("ScalarExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
+        if (_logger.IsEnabled(LogLevel.Trace))
+            _logger.LogTrace("ScalarExecutedAsync called with {CommandText}", command.CommandText.Substring(0, Math.Min(100, command.CommandText.Length)));
         return await CaptureAndProceedAsync(
             command,
             eventData.Duration,
@@ -253,11 +257,6 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
 
     /// <summary>
     /// Determines whether this slow query should be sampled based on SamplingRate.
-    /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
-    /// </summary>
-    /// <summary>
-    /// Determines whether this slow query should be sampled based on SamplingRate.
-    /// Uses a deterministic hash of the SQL to ensure consistent sampling across restarts.
     /// </summary>
     private bool ShouldSample(DbCommand command)
     {
@@ -269,22 +268,12 @@ public sealed class SlowQueryInterceptor : DbCommandInterceptor
         if (_options.SamplingRate <= 0.0)
             return false;
 
-        lock (_samplingGate)
-        {
-            // Use a deterministic hash of the SQL to decide sampling
-            // This ensures the same queries are consistently sampled across application restarts
-            var sql = command.CommandText ?? string.Empty;
-            var hashBytes = SHA256.HashData(Encoding.UTF8.GetBytes(sql));
-            var hash = BitConverter.ToUInt32(hashBytes, 0);
+        var sql = command.CommandText ?? string.Empty;
 
-            // Simple deterministic sampling: sample every N queries where N = 1/samplingRate
-            var sampleInterval = (int)Math.Ceiling(1.0 / _options.SamplingRate);
-            var counter = _samplingCounters.GetOrAdd(sql, _ => 0);
-            _samplingCounters[sql] = counter + 1;
-            var shouldSample = counter % sampleInterval == 0;
-
-            return shouldSample;
-        }
+        // Simple deterministic sampling: sample every N queries where N = 1/samplingRate
+        var sampleInterval = (int)Math.Ceiling(1.0 / _options.SamplingRate);
+        var newCount = _samplingCounters.AddOrUpdate(sql, 1, (_, count) => count + 1);
+        return (newCount - 1) % sampleInterval == 0;
     }
 
     private TimeSpan GetEffectiveThreshold(DbCommand command)
