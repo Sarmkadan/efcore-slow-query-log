@@ -7,12 +7,22 @@ namespace EfCore.SlowQueryLog.Reporting;
 
 /// <summary>
 /// Thread-safe, bounded ranking of slow query fingerprints (grouped by SQL), ordered by
-/// specified metric. Keeps at most <c>capacity</c> entries.
+/// specified metric. Keeps at most <c>capacity</c> entries for ranking display,
+/// while maintaining a separate <see cref="_maxSamples"/> limit for the total fingerprint store.
 /// </summary>
 public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
 {
     private readonly object _gate = new();
+    /// <summary>
+    /// All captured fingerprints, bounded by <see cref="_maxSamples"/>. Uses FIFO eviction when full.
+    /// </summary>
+    private readonly List<SlowQueryFingerprint> _allFingerprints = new();
+    /// <summary>
+    /// Top N fingerprints for ranking display, bounded by <see cref="_capacity"/>.
+    /// Always contains the highest ranked fingerprints from <see cref="_allFingerprints"/>.
+    /// </summary>
     private readonly List<SlowQueryFingerprint> _items = new();
+    private readonly int _maxSamples;
     private readonly int _capacity;
     private readonly RankingMetric _metric;
 
@@ -31,10 +41,13 @@ public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
         MaxDuration
     }
 
-    public SlowQueryFingerprintRanking(int capacity, RankingMetric metric = RankingMetric.AverageDuration)
+    public SlowQueryFingerprintRanking(int maxSamples, int capacity, RankingMetric metric = RankingMetric.AverageDuration)
     {
+        if (maxSamples <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxSamples));
         if (capacity <= 0)
             throw new ArgumentOutOfRangeException(nameof(capacity));
+        _maxSamples = maxSamples;
         _capacity = capacity;
         _metric = metric;
     }
@@ -45,15 +58,22 @@ public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
 
         lock (_gate)
         {
+            // If we've reached maxSamples, evict the oldest fingerprint using FIFO strategy
+            // This ensures we keep the most recent fingerprints, which are typically more relevant
+            if (_allFingerprints.Count >= _maxSamples)
+            {
+                _allFingerprints.RemoveAt(0); // Remove oldest (FIFO)
+            }
+
             // Find existing fingerprint without creating intermediate dictionary
             SlowQueryFingerprint? existing = null;
             var existingIndex = -1;
 
-            for (var i = 0; i < _items.Count; i++)
+            for (var i = 0; i < _allFingerprints.Count; i++)
             {
-                if (string.Equals(_items[i].Sql, sample.Sql, StringComparison.Ordinal))
+                if (string.Equals(_allFingerprints[i].Sql, sample.Sql, StringComparison.Ordinal))
                 {
-                    existing = _items[i];
+                    existing = _allFingerprints[i];
                     existingIndex = i;
                     break;
                 }
@@ -67,15 +87,13 @@ public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
             else
             {
                 // Add new fingerprint
-                _items.Add(new SlowQueryFingerprint(sample.Sql, sample.Parameters, sample.Suggestions));
+                var fingerprint = new SlowQueryFingerprint(sample.Sql, sample.Parameters, sample.Suggestions);
+                _allFingerprints.Add(fingerprint);
+                existing = fingerprint;
             }
 
-            // Sort by the selected metric
-            SortItems();
-
-            // Keep only top items
-            if (_items.Count > _capacity)
-                _items.RemoveRange(_capacity, _items.Count - _capacity);
+            // Maintain the ranked items (top N by metric)
+            UpdateRankedItems();
         }
     }
 
@@ -92,10 +110,23 @@ public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
         }
     }
 
-    private void SortItems()
-    {
-        _items.Sort(GetComparison());
-    }
+    private void UpdateRankedItems()
+        {
+            // Create a working copy of all fingerprints for ranking
+            var fingerprintsToRank = new List<SlowQueryFingerprint>(_allFingerprints);
+
+            // Sort by the selected metric
+            fingerprintsToRank.Sort(GetComparison());
+
+            // Keep only the top N fingerprints for ranking display
+            if (fingerprintsToRank.Count > _capacity)
+            {
+                fingerprintsToRank.RemoveRange(_capacity, fingerprintsToRank.Count - _capacity);
+            }
+
+            _items.Clear();
+            _items.AddRange(fingerprintsToRank);
+        }
 
     private Comparison<SlowQueryFingerprint> GetComparison()
     {
