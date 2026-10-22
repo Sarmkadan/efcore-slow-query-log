@@ -25,7 +25,7 @@ public static class SlowQueryRankingFactory
         return options.RankingMode switch
         {
             SlowQueryRankingMode.Exact => new SlowQueryRanking(options.MaxSamples, options.RankingCapacity),
-            SlowQueryRankingMode.Fingerprint => new SlowQueryFingerprintRanking(options.RankingCapacity),
+            SlowQueryRankingMode.Fingerprint => new SlowQueryFingerprintRanking(options.MaxSamples, options.RankingCapacity),
             _ => throw new ArgumentOutOfRangeException(nameof(options), options.RankingMode, "Unrecognized SlowQueryRankingMode value.")
         };
     }

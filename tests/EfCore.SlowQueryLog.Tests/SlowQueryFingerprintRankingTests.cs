@@ -25,13 +25,13 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void Constructor_ZeroCapacity_ThrowsArgumentOutOfRangeException()
     {
-        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryFingerprintRanking(0));
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryFingerprintRanking(10, 0));
     }
 
     [Fact]
     public void Add_SingleSample_CreatesFingerprintWithCorrectStatistics()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         ranking.Add(Sample(250, "SELECT * FROM Users"));
 
         var snap = ranking.Snapshot();
@@ -49,7 +49,7 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void Add_MultipleSamples_GroupedBySql_AggregatesStatistics()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         ranking.Add(Sample(100, "Q"));
         ranking.Add(Sample(300, "Q"));
         ranking.Add(Sample(200, "Q"));
@@ -65,7 +65,7 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void Add_DifferentSql_CreatesSeparateFingerprints()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         ranking.Add(Sample(100, "A"));
         ranking.Add(Sample(200, "B"));
         ranking.Add(Sample(150, "C"));
@@ -80,7 +80,7 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void AddRange_EmptyCollection_NoEffect()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         ranking.AddRange(Array.Empty<SlowQuerySample>());
         Assert.Empty(ranking.Snapshot());
     }
@@ -88,14 +88,14 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void AddRange_NullCollection_ThrowsArgumentNullException()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         Assert.Throws<ArgumentNullException>(() => ranking.AddRange(null!));
     }
 
     [Fact]
     public void Capacity_IsRespected_OnlyTopRankedKept()
     {
-        var ranking = new SlowQueryFingerprintRanking(2);
+        var ranking = new SlowQueryFingerprintRanking(10, 2);
 
         ranking.Add(Sample(100, "Q1"));
         ranking.Add(Sample(500, "Q2"));
@@ -111,7 +111,7 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void Clear_RemovesAllFingerprints()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         ranking.Add(Sample(100, "A"));
         ranking.Add(Sample(200, "B"));
         Assert.Equal(2, ranking.Count);
@@ -124,10 +124,10 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void MetricProperty_ReturnsConfiguredMetric()
     {
-        var avg = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.AverageDuration);
-        var total = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.TotalDuration);
-        var max = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.MaxDuration);
-        var p95 = new SlowQueryFingerprintRanking(10, SlowQueryFingerprintRanking.RankingMetric.P95Duration);
+        var avg = new SlowQueryFingerprintRanking(10, 10, SlowQueryFingerprintRanking.RankingMetric.AverageDuration);
+        var total = new SlowQueryFingerprintRanking(10, 10, SlowQueryFingerprintRanking.RankingMetric.TotalDuration);
+        var max = new SlowQueryFingerprintRanking(10, 10, SlowQueryFingerprintRanking.RankingMetric.MaxDuration);
+        var p95 = new SlowQueryFingerprintRanking(10, 10, SlowQueryFingerprintRanking.RankingMetric.P95Duration);
 
         Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.AverageDuration, avg.Metric);
         Assert.Equal(SlowQueryFingerprintRanking.RankingMetric.TotalDuration, total.Metric);
@@ -138,7 +138,7 @@ public class SlowQueryFingerprintRankingTests
     [Fact]
     public void Add_NullSample_ThrowsArgumentNullException()
     {
-        var ranking = new SlowQueryFingerprintRanking(10);
+        var ranking = new SlowQueryFingerprintRanking(10, 10);
         Assert.Throws<ArgumentNullException>(() => ranking.Add(null!));
     }
 }
