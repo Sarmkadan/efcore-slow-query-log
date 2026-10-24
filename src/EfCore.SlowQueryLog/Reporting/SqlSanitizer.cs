@@ -122,9 +122,10 @@ public static class SqlSanitizer
 
         if (maxLength > 0 && sql.Length > maxLength)
         {
-            sql = maxLength <= Ellipsis.Length
-                ? sql.Substring(0, maxLength)
-                : sql.Substring(0, maxLength - Ellipsis.Length) + Ellipsis;
+            // Truncate and escape the retained text, then append the ellipsis unescaped so it renders as "...".
+            return maxLength <= Ellipsis.Length
+                ? EscapeMarkdown(sql.Substring(0, maxLength))
+                : EscapeMarkdown(sql.Substring(0, maxLength - Ellipsis.Length)) + Ellipsis;
         }
 
         return EscapeMarkdown(sql);

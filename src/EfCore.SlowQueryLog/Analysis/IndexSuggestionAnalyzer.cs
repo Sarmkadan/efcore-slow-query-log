@@ -50,11 +50,13 @@ public sealed partial class IndexSuggestionAnalyzer
     /// </summary>
     /// <param name="sql">The SQL query to analyze.</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="sql"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="sql"/> is empty or whitespace.</exception>
     public IReadOnlyList<IndexSuggestion> Analyze(string sql)
     {
         ArgumentNullException.ThrowIfNull(sql);
-        ArgumentException.ThrowIfNullOrEmpty(sql);
+
+        // Blank text has nothing to analyze; returning early keeps the interceptor hot path from throwing.
+        if (string.IsNullOrWhiteSpace(sql))
+            return Array.Empty<IndexSuggestion>();
 
         var normalizedSql = NormalizeQuoting(sql);
         var aliasMap = BuildAliasMap(normalizedSql);

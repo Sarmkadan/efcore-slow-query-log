@@ -88,6 +88,7 @@ public sealed class SlowQueryFingerprintRanking : ISlowQueryRanking
             {
                 // Add new fingerprint
                 var fingerprint = new SlowQueryFingerprint(sample.Sql, sample.Parameters, sample.Suggestions);
+                fingerprint.AddSample(sample);
                 _allFingerprints.Add(fingerprint);
                 existing = fingerprint;
             }

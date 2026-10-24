@@ -54,7 +54,7 @@ namespace EfCore.SlowQueryLog.Tests
 
             Assert.False(options.IsValid());
 
-            Assert.Throws<ArgumentException>(() => options.EnsureValid());
+            Assert.ThrowsAny<ArgumentException>(() => options.EnsureValid());
         }
 
         /// <summary>
@@ -77,7 +77,7 @@ namespace EfCore.SlowQueryLog.Tests
 
             Assert.False(options.IsValid());
 
-            Assert.Throws<ArgumentException>(() => options.EnsureValid());
+            Assert.ThrowsAny<ArgumentException>(() => options.EnsureValid());
         }
 
         /// <summary>

@@ -121,8 +121,11 @@ public sealed class SlowQueryLogOptions
     /// when the channel is full. This prevents the interceptor from becoming a bottleneck
     /// during query execution. When false, analysis runs synchronously on the calling thread.
     /// </summary>
-    /// <remarks>Default value: true.</remarks>
-    public bool AnalyzeOnBackgroundThread { get; set; } = true;
+    /// <remarks>
+    /// Default value: false. Background results are not yet attached to captured samples, so
+    /// enabling this option currently leaves <see cref="SlowQuerySample.Suggestions"/> empty.
+    /// </remarks>
+    public bool AnalyzeOnBackgroundThread { get; set; } = false;
 
     /// <summary>
     /// Bounded channel capacity for background analysis queue. When the channel is full,

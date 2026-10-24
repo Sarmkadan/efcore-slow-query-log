@@ -339,7 +339,7 @@ public class SlowQueryInterceptorExtensionsTests
     }
 
     /// <summary>
-    /// Verifies that Capture() throws NullReferenceException for null command (actual behavior).
+    /// Verifies that Capture() throws ArgumentNullException for null command.
     /// </summary>
     [Fact]
     public void Capture_throws_for_null_command()
@@ -349,8 +349,8 @@ public class SlowQueryInterceptorExtensionsTests
             Threshold = TimeSpan.FromMilliseconds(1),
         });
 
-        // The interceptor's Capture method doesn't validate null command, it throws NullReferenceException
-        Assert.Throws<NullReferenceException>(() =>
+        // Capture guards its arguments and reports the null command by parameter name
+        Assert.Throws<ArgumentNullException>(() =>
             interceptor.Capture(null!, TimeSpan.FromMilliseconds(100)));
     }
 

@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Xunit;
 using EfCore.SlowQueryLog.Options;
 using EfCore.SlowQueryLog;
+using EfCore.SlowQueryLog.Interception;
 
 namespace EfCore.SlowQueryLog.Tests;
 
@@ -26,7 +27,7 @@ public class SlowQueryLogOptionsTests
             Threshold = TimeSpan.Zero
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
@@ -37,7 +38,7 @@ public class SlowQueryLogOptionsTests
             RankingCapacity = 0
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
@@ -48,7 +49,7 @@ public class SlowQueryLogOptionsTests
             MaxSamples = -5
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
@@ -59,7 +60,7 @@ public class SlowQueryLogOptionsTests
             MaxAnalysesPerMinute = -1
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
@@ -70,7 +71,7 @@ public class SlowQueryLogOptionsTests
             BackgroundQueueCapacity = 0
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Theory]
@@ -83,7 +84,7 @@ public class SlowQueryLogOptionsTests
             SamplingRate = rate
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
@@ -109,7 +110,7 @@ public class SlowQueryLogOptionsTests
             }
         };
 
-        Assert.Throws<ArgumentException>(() => options.Validate());
+        Assert.Throws<ArgumentException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
@@ -123,7 +124,7 @@ public class SlowQueryLogOptionsTests
             }
         };
 
-        Assert.Throws<ArgumentOutOfRangeException>(() => options.Validate());
+        Assert.Throws<ArgumentOutOfRangeException>(() => new SlowQueryInterceptor(options));
     }
 
     [Fact]
