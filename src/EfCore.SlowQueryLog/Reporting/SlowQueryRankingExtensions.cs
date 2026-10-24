@@ -139,7 +139,7 @@ public static class SlowQueryRankingExtensions
     /// <param name="filePath">The path to the output Markdown file.</param>
     /// <param name="topN">Number of top fingerprints to include (default: 20).</param>
     /// <exception cref="ArgumentNullException">Thrown if <paramref name="ranking"/> or <paramref name="filePath"/> is null.</exception>
-    /// <exception cref="ArgumentException">Thrown if <paramref name="filePath"/> is empty or whitespace.</exception>
+    /// <exception cref="ArgumentException">Thrown if <paramref name="filePath"/> is empty, whitespace, invalid, or names an existing directory.</exception>
     public static void WriteMarkdownReport(this ISlowQueryRanking ranking, string filePath, int topN = 20)
     {
         ArgumentNullException.ThrowIfNull(ranking);

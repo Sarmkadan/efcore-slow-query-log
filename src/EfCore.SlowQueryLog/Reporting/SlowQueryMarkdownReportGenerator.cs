@@ -139,19 +139,30 @@ public static class SlowQueryMarkdownReportGenerator
     /// <summary>
     /// Generates a Markdown report file from a slow query ranking.
     /// </summary>
-    /// <param name="filePath">The path to the output Markdown file.</param>
+    /// <remarks>
+    /// <paramref name="filePath"/> is resolved with <see cref="System.IO.Path.GetFullPath(string)"/> and used as given:
+    /// it is not confined to a base directory, and an existing file at that location is overwritten.
+    /// The path is trusted input. Do not derive it from untrusted sources such as request data or unvalidated configuration.
+    /// </remarks>
+    /// <param name="filePath">The path to the output Markdown file. Must name a file, not a directory.</param>
     /// <param name="ranking">The ranking to report on. Works with any <see cref="ISlowQueryRanking"/> implementation.</param>
     /// <param name="topN">Number of top fingerprints to include in the report (default: 20).</param>
     /// <exception cref="ArgumentNullException">Thrown if filePath or ranking is null.</exception>
-    /// <exception cref="ArgumentException">Thrown if filePath is empty or whitespace.</exception>
+    /// <exception cref="ArgumentException">Thrown if filePath is empty, whitespace, contains invalid path characters, or names an existing directory.</exception>
     public static void WriteReport(string filePath, ISlowQueryRanking ranking, int topN = 20)
     {
         ArgumentNullException.ThrowIfNull(filePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
         ArgumentNullException.ThrowIfNull(ranking);
 
+        var fullPath = System.IO.Path.GetFullPath(filePath);
+        if (System.IO.Directory.Exists(fullPath))
+        {
+            throw new ArgumentException($"Report path '{fullPath}' is a directory; provide a file path.", nameof(filePath));
+        }
+
         var report = GenerateReport(ranking, topN);
-        System.IO.File.WriteAllText(filePath, report);
+        System.IO.File.WriteAllText(fullPath, report);
     }
 
     private static string TruncateSql(string sql, int maxLength)
